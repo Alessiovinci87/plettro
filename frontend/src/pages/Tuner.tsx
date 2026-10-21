@@ -90,7 +90,7 @@ export function Tuner() {
       const name = (e as DOMException)?.name;
       setError(
         name === 'NotAllowedError'
-          ? 'Il microfono è bloccato. Consenti l’accesso al microfono per questa pagina nelle impostazioni del browser, poi riprova.'
+          ? 'Il microfono è bloccato. Consenti l’accesso al microfono nelle impostazioni del browser, poi riprova. Nell’anteprima dentro Claude il microfono non è disponibile: usa l’app pubblicata.'
           : 'Nessun microfono disponibile. Collega un microfono o apri l’app da telefono.',
       );
     }
