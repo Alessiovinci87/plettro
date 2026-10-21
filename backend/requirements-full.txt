@@ -1,0 +1,6 @@
+# Analisi completa: separazione della chitarra con Demucs (scarica ~80 MB di modello al primo uso).
+# Su Windows installa prima PyTorch dal sito ufficiale se vuoi la GPU: https://pytorch.org/get-started/locally/
+-r requirements.txt
+torch>=2.2
+torchaudio>=2.2
+demucs>=4.0
