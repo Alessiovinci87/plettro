@@ -62,16 +62,16 @@ Regole comuni: testi in italiano, stile e token di `styles.css`, niente `confirm
 
 ## Fase 7 – Guida alle scale nel Manico
 
-- [ ] Modalità "Impara la scala" con selettore "Tutto il manico / Posizione 1..5"
-- [ ] Pentatoniche e blues: 5 box; maggiore, minore e modi: 3 note per corda
-- [ ] In una posizione: solo quelle note, numero del dito nel pallino, tonica evidenziata,
+- [x] Modalità "Impara la scala" con selettore "Tutto il manico / Posizione 1..5"
+- [x] Pentatoniche e blues: 5 box; maggiore, minore e modi: 3 note per corda
+- [x] In una posizione: solo quelle note, numero del dito nel pallino, tonica evidenziata,
       banda "mano al 5º tasto"
-- [ ] Ordine di esecuzione numerato (salita 6ª → 1ª, poi discesa)
-- [ ] "Suona la scala": nota corrente evidenziata, bpm regolabili, ripetizione continua
-- [ ] Spiegazione breve sopra il manico e consiglio d'uso; vista tablatura testuale
-- [ ] Frecce posizione precedente/successiva; in "Tutto il manico" posizioni colorate
-- [ ] Corde etichettate a sinistra ("1ª Mi" in alto … "6ª Mi" in basso); intarsi mai sotto i pallini
-- [ ] Logica pura in `src/music/positions.ts` con test (La pentatonica minore pos. 1 = 5-8 / 5-7 …)
+- [x] Ordine di esecuzione numerato (salita 6ª → 1ª, poi discesa)
+- [x] "Suona la scala": nota corrente evidenziata, bpm regolabili, ripetizione continua
+- [x] Spiegazione breve sopra il manico e consiglio d'uso; vista tablatura testuale
+- [x] Frecce posizione precedente/successiva; in "Tutto il manico" posizioni colorate
+- [x] Corde etichettate a sinistra ("1ª Mi" in alto … "6ª Mi" in basso); intarsi mai sotto i pallini
+- [x] Logica pura in `src/music/positions.ts` con test (La pentatonica minore pos. 1 = 5-8 / 5-7 …)
 
 ## Scelte fatte strada facendo
 
@@ -159,3 +159,18 @@ Le scelte prese dove la richiesta lasciava margine sono annotate qui, fase per f
   bozza. Eliminazione con conferma nella pagina. Nel player compaiono in "Parti da" sotto "I miei"
   (solo quelli con la stessa lunghezza della battuta della sezione).
 - Corretto anche un difetto di Ritmo: dopo "Ferma" una casella della griglia poteva restare accesa.
+
+### Fase 7
+
+- "Impara la scala" è una terza vista del Manico, tra "Scale" e "Accordo" (rinominata da "Note dell'accordo"
+  per stare su una riga a 390 px).
+- Scale a 7 note in tre note per corda: le posizioni sono 7, non 5 (il selettore mostra 1..7).
+  Pentatoniche in box da 2 note per corda; il blues aggiunge la blue note dentro il box.
+- La posizione 1 parte dalla tonica sulla 6ª corda; le altre salgono lungo il manico e tornano
+  all'ottava bassa quando superano il 15º tasto (in La: 5, 8, 10, 12, 3).
+- Nei pallini si sceglie Dita, Ordine, Note o Gradi; "Suona la scala" usa una nota per battito,
+  40–200 bpm, ripetizione continua con un battito di pausa.
+- In "Tutto il manico" i colori delle posizioni vengono da una palette verificata sul legno scuro
+  (uguale nei due temi); le note in comune hanno il pallino a due colori.
+- Corde più distanti (34 px) e intarsi più piccoli: verificato che nessun intarsio cade sotto un pallino.
+  Le etichette delle corde seguono la notazione scelta nelle impostazioni ("1ª E" o "1ª Mi").

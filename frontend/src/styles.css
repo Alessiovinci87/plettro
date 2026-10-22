@@ -1084,6 +1084,161 @@ select {
 .neck-mark.k-root text {
   fill: #0f3a33;
 }
+.neck-label {
+  fill: var(--bone-dim);
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 13px;
+}
+/* banda della mano: dove stanno le quattro dita */
+.neck-band rect {
+  fill: var(--pearl);
+  opacity: 0.16;
+  stroke: var(--pearl);
+  stroke-opacity: 0.7;
+  stroke-width: 1.5;
+}
+.neck-band text {
+  fill: var(--pearl);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+}
+/* posizioni colorate: testo scuro su colori medi, tonica con l'anello in osso */
+.neck-mark.is-colored circle,
+.neck-mark.is-colored path {
+  stroke: none;
+}
+.neck-mark.is-colored text,
+.neck-mark.is-colored.k-root text {
+  fill: #1e1613;
+}
+.neck-mark.is-colored circle.neck-ring {
+  fill: none;
+  stroke: #1e1613;
+  stroke-width: 1;
+}
+.neck-mark.is-colored.k-root circle:not(.neck-now),
+.neck-mark.is-colored.k-root circle.neck-ring {
+  stroke: #efe7d6;
+  stroke-width: 3;
+}
+.neck-mark .neck-now {
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 3;
+}
+.neck-mark.is-now circle:not(.neck-now) {
+  fill: var(--amber);
+}
+.neck-mark.is-now text {
+  fill: #1e1613;
+}
+
+/* impara la scala */
+.btn-round {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--wood-3);
+  background: var(--wood-2);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.btn-round:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.learn-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.learn-pos {
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.learn-pos .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 42px;
+  justify-content: center;
+}
+.pos-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.learn-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--wood-2);
+  border: 1px solid var(--wood-3);
+  border-left: 4px solid var(--pearl);
+  border-radius: var(--radius-s);
+  padding: 10px 14px;
+}
+.learn-tips p {
+  margin: 0;
+}
+.learn-use {
+  color: var(--bone-dim);
+}
+.learn-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.learn-tab pre {
+  margin: 0 0 6px;
+  overflow-x: auto;
+  background: var(--wood-2);
+  border: 1px solid var(--wood-3);
+  border-radius: var(--radius-s);
+  padding: 10px 12px;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.tab-head {
+  margin: 4px 0;
+  font-weight: 700;
+}
+.learn-play {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.learn-play > .hint {
+  flex: 1 1 100%;
+}
+.learn-bpm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.learn-bpm label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+.learn-bpm input {
+  width: 120px;
+  accent-color: var(--pearl);
+}
+@media (max-width: 520px) {
+  .learn-play > .btn-primary {
+    flex: 1 1 100%;
+  }
+}
 
 /* ---------------- ritmo ---------------- */
 .bpm-box {
