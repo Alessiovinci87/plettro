@@ -49,6 +49,39 @@ pip install -r requirements-full.txt
 Nell'app, sezione **Analizza → Server di analisi**, imposta l'indirizzo del backend
 (dal telefono: http://IP-DEL-PC:8000).
 
+## Analisi dal telefono
+
+Quando l'app è pubblicata in https (per esempio su Vercel), il browser non può chiamare il
+backend del PC su un indirizzo http://: serve un indirizzo https. Il modo più semplice è un
+tunnel di Cloudflare, gratuito e senza account. Esegui i comandi in PowerShell, uno alla volta.
+
+1. Installa cloudflared (una volta sola, poi chiudi e riapri PowerShell):
+
+   ```powershell
+   winget install Cloudflare.cloudflared
+   ```
+
+2. Avvia il backend come sopra e lascialo acceso:
+
+   ```powershell
+   cd C:\percorso\plettro\backend
+   .\.venv\Scripts\Activate.ps1
+   uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ```
+
+3. In un'altra finestra di PowerShell avvia il tunnel e lascialo acceso:
+
+   ```powershell
+   cloudflared tunnel --url http://localhost:8000
+   ```
+
+4. Tra le righe stampate cerca l'indirizzo che finisce in `.trycloudflare.com`, per esempio
+   `https://nome-a-caso.trycloudflare.com`. Copialo e incollalo nell'app in
+   **Analizza → Server di analisi → Indirizzo**, poi tocca **Riprova la connessione**.
+
+L'indirizzo cambia ogni volta che riavvii il tunnel: ricopialo in Analizza. Il tunnel è
+pubblico finché resta acceso: chiudilo (Ctrl+C) quando hai finito.
+
 ### Test
 
 ```powershell

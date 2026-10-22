@@ -3,6 +3,7 @@ import { useSettings } from '../store';
 import sample from '../data/sample-analysis.json';
 import { Player } from './Player';
 import type { Analysis } from './analysis-types';
+import { needsHttps } from './serverUrl';
 
 export type { Analysis } from './analysis-types';
 
@@ -96,6 +97,7 @@ export function Analyze() {
   if (song) return <Player a={song.a} audioUrl={song.audio} title={song.title} onClose={() => setSong(null)} />;
 
   const busy = !!job;
+  const mixed = needsHttps(location.protocol, backendUrl);
   return (
     <section className="page analyze">
       <p className="hint">
@@ -119,6 +121,11 @@ export function Analyze() {
         </button>
       )}
       {error && <p className="error">{error}</p>}
+      {mixed && (
+        <p className="error" role="alert">
+          Da qui serve un indirizzo https: avvia il tunnel sul PC (vedi README).
+        </p>
+      )}
 
       <div className="or">oppure</div>
       <button className="btn-secondary" onClick={() => open(sample as unknown as Analysis, SAMPLE_AUDIO, 'Brano di prova')}>
@@ -135,7 +142,11 @@ export function Analyze() {
           Indirizzo
           <input id="backend-url" className="text-in" value={backendUrl} onChange={(e) => set({ backendUrl: e.target.value.replace(/\/$/, '') })} inputMode="url" />
         </label>
-        <p className="hint">Dal telefono usa l'indirizzo del PC sulla stessa rete Wi-Fi, per esempio http://192.168.1.20:8000.</p>
+        <p className="hint">
+          {location.protocol === 'https:'
+            ? "Dal telefono usa l'indirizzo https del tunnel, per esempio https://nome-a-caso.trycloudflare.com."
+            : "Dal telefono usa l'indirizzo del PC sulla stessa rete Wi-Fi, per esempio http://192.168.1.20:8000."}
+        </p>
         <button className="btn-text" onClick={check}>
           Riprova la connessione
         </button>
