@@ -90,6 +90,17 @@ def segment(bar_feat: np.ndarray, bar_times: np.ndarray, bar_energy: np.ndarray,
             rep_energy.append(s.energy)
     for s, g in zip(secs, groups):
         s.group = chr(ord("A") + min(g, 25))
+    # sezioni consecutive dello stesso gruppo sono una sola: energia pesata sulle battute
+    merged: list[Section] = []
+    for s in secs:
+        p = merged[-1] if merged else None
+        if p is not None and p.group == s.group:
+            nb, ns = p.end_bar - p.start_bar, s.end_bar - s.start_bar
+            p.energy = (p.energy * nb + s.energy * ns) / (nb + ns)
+            p.end_bar, p.end = s.end_bar, s.end
+        else:
+            merged.append(s)
+    secs = merged
     _name(secs)
     if N < N_all and secs[-1].label == "Finale":
         secs[-1].end_bar, secs[-1].end = N_all, float(bar_times[N_all])
