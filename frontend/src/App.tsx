@@ -6,9 +6,10 @@ import { Neck, type NeckFocus } from './pages/Neck';
 import { Rhythm } from './pages/Rhythm';
 import { Analyze } from './pages/Analyze';
 import { Tunings } from './pages/Tunings';
+import { Trainer } from './pages/Trainer';
 import { pcName } from './music/theory';
 
-type Tab = 'accorda' | 'accordi' | 'manico' | 'ritmo' | 'analisi' | 'accordature';
+type Tab = 'accorda' | 'accordi' | 'manico' | 'ritmo' | 'allenati' | 'analisi' | 'accordature';
 
 const ICONS: Record<Tab, ReactNode> = {
   // diapason
@@ -30,6 +31,13 @@ const ICONS: Record<Tab, ReactNode> = {
   ),
   // metronomo
   ritmo: <path d="M7 21.5h10L14.2 3h-4.4zM12 15.5l5-8.5M8.6 16.5h6.8" />,
+  // cronometro
+  allenati: (
+    <>
+      <circle cx="12" cy="13.5" r="7.5" />
+      <path d="M12 13.5V9.5M10 2.5h4M12 2.5V6M18 6.5l1.5-1.5" />
+    </>
+  ),
   // forma d'onda
   analisi: <path d="M3.5 10v4M7.5 6.5v11M11.5 3.5v17M15.5 8v8M19.5 10.5v3" />,
   // chiavette
@@ -50,6 +58,7 @@ const NAV: { id: Tab; label: string; title: string; short?: string }[] = [
   { id: 'accordi', label: 'Accordi', title: 'Libro accordi' },
   { id: 'manico', label: 'Manico', title: 'Manico' },
   { id: 'ritmo', label: 'Ritmo', title: 'Ritmo' },
+  { id: 'allenati', label: 'Allenati', title: 'Allenati', short: 'Allenati sui cambi' },
   { id: 'analisi', label: 'Analizza', title: 'Suona con il brano', short: 'Suona il brano' },
   { id: 'accordature', label: 'Accordature', title: 'Accordature' },
 ];
@@ -141,6 +150,7 @@ function Shell() {
           )}
           {tab === 'manico' && <Neck focus={neck} onFocus={setNeck} />}
           {tab === 'ritmo' && <Rhythm />}
+          {tab === 'allenati' && <Trainer />}
           {tab === 'analisi' && <Analyze />}
           {tab === 'accordature' && <Tunings onDone={() => go('accorda')} />}
         </main>

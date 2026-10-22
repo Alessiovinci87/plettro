@@ -45,11 +45,11 @@ Regole comuni: testi in italiano, stile e token di `styles.css`, niente `confirm
 
 ## Fase 5 – Allenatore dei cambi
 
-- [ ] Nuova voce "Allenati" nella navigazione
-- [ ] Due accordi a scelta o coppia suggerita
-- [ ] Timer di 60 s, cambi contati con un grande pulsante o la barra spaziatrice
-- [ ] Storico in localStorage, miglior risultato per coppia, grafico dei progressi
-- [ ] Test della logica (coppie, storico, record)
+- [x] Nuova voce "Allenati" nella navigazione
+- [x] Due accordi a scelta o coppia suggerita
+- [x] Timer di 60 s, cambi contati con un grande pulsante o la barra spaziatrice
+- [x] Storico in localStorage, miglior risultato per coppia, grafico dei progressi
+- [x] Test della logica (coppie, storico, record)
 
 ## Fase 6 – Libro accordi e Ritmo
 
@@ -131,3 +131,15 @@ Le scelte prese dove la richiesta lasciava margine sono annotate qui, fase per f
   "Adesso" e "Poi" non mostrano lo stesso nome. Sotto i dati del brano c'è l'elenco delle sostituzioni.
   La diteggiatura mostrata è la forma facile. In "Modifica" si vedono gli accordi originali.
 - I nomi lunghi nella scheda si rimpiccioliscono invece di andare a capo ("Fma / j7").
+
+### Fase 5
+
+- "Allenati" sta tra Ritmo e Analizza; la barra in basso del telefono passa da 5 a 6 voci.
+- La prova parte con "Via" o con la barra spaziatrice; durante la prova lo spazio conta un cambio.
+  Il pulsante grande mostra i cambi e l'accordo su cui devi essere adesso (evidenziato anche sopra).
+- La coppia non dipende dall'ordine (G–C e C–G sono lo stesso esercizio). La prima prova di una
+  coppia non è un "record": il record arriva quando superi il migliore.
+- Storico in `plettro.trainer.v1` (ultime 500 prove). Il grafico mostra le ultime 20 prove della coppia:
+  barre su un solo asse con tacche intere, record e ultima prova etichettati, dettaglio al passaggio
+  o al tocco, e una tabella come alternativa al grafico.
+- Due click alla fine dei 60 secondi.

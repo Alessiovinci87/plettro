@@ -196,7 +196,7 @@ button {
   bottom: 0;
   z-index: 6;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   padding: 6px max(4px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left, 0px));
   background: var(--wood-2);
   border-top: 1px solid var(--wood-3);
@@ -1526,6 +1526,265 @@ details ul {
 }
 .ss-bar.picked {
   border: 2px solid var(--amber);
+}
+
+/* ---------------- allenati ---------------- */
+.trainer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+.trainer > .hint {
+  margin: 0;
+}
+.tr-pick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.tr-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 10px;
+  background: var(--card);
+  color: var(--card-ink);
+  border: 2px solid transparent;
+  border-radius: var(--radius-m);
+}
+.tr-slot.is-on {
+  border-color: var(--amber);
+}
+.tr-slot-name {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2.2rem;
+  line-height: 1;
+}
+.tr-slot-sel {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+}
+.tr-slot-sel select {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 130px;
+  background: #fff8ec;
+  color: var(--card-ink);
+  border-color: #d8c29a;
+}
+.tr-slot-diagram svg {
+  width: 120px;
+  height: auto;
+}
+.tr-suggest {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tr-suggest .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tr-best-chip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--amber);
+}
+.tr-round {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px 16px;
+}
+.tr-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 84px;
+}
+.tr-left {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 3.2rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.tr-left-label {
+  font-size: 0.8rem;
+  color: var(--bone-dim);
+}
+.tr-tap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 120px;
+  border-radius: var(--radius-m);
+  border: 0;
+  background: var(--pearl);
+  color: var(--pearl-ink);
+  touch-action: manipulation;
+  user-select: none;
+}
+.tr-tap:active {
+  transform: scale(0.985);
+}
+.tr-tap.is-idle {
+  background: var(--bone);
+  color: var(--wood);
+}
+.tr-tap:disabled {
+  opacity: 0.4;
+}
+.tr-tap-count {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 3.4rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.tr-tap-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+.tr-tap-count + .tr-tap-label {
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.tr-tap-sub {
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+.tr-result {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--bone-dim);
+}
+.tr-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tr-progress .h-sub,
+.tr-tried .h-sub {
+  margin: 0;
+}
+.tr-chart {
+  position: relative;
+}
+.tr-chart svg {
+  display: block;
+  overflow: visible;
+}
+.tr-grid line {
+  stroke: var(--wood-3);
+  stroke-width: 1;
+}
+.tr-grid text,
+.tr-axis {
+  fill: var(--bone-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.tr-bar {
+  fill: var(--pearl);
+}
+.tr-bar.is-hover {
+  fill: var(--bone);
+}
+.tr-bar-label {
+  fill: var(--bone);
+  font-size: 12px;
+  font-weight: 700;
+}
+.tr-tip {
+  position: absolute;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  background: var(--bone);
+  color: var(--wood);
+  border-radius: var(--radius-s);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tr-table summary {
+  color: var(--pearl);
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+.tr-table table {
+  margin-top: 6px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.tr-table th,
+.tr-table td {
+  text-align: left;
+  padding: 3px 14px 3px 0;
+  border-bottom: 1px solid var(--wood-3);
+}
+.tr-tried ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tr-tried li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--wood-3);
+}
+.tr-tried li span {
+  font-size: 0.85rem;
+  color: var(--bone-dim);
+}
+@media (max-width: 520px) {
+  .tr-round {
+    grid-template-columns: 1fr;
+  }
+  .tr-clock {
+    flex-direction: row;
+    gap: 6px;
+    align-items: baseline;
+    justify-content: center;
+  }
+  .tr-tap {
+    min-height: 130px;
+  }
+  .tr-slot {
+    padding: 10px 8px;
+    gap: 6px;
+  }
+  .tr-slot-name {
+    font-size: 1.8rem;
+  }
+  .tr-slot-sel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tr-slot-sel select {
+    max-width: none;
+  }
+  .tr-slot-diagram svg {
+    width: 96px;
+  }
 }
 
 /* ---------------- player: accordi semplici ---------------- */
