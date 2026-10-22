@@ -141,7 +141,7 @@ function useSongClock(audioUrl: string | null, duration: number) {
 
 // ---------------------------------------------------------------------------
 
-export function Player({ a, audioUrl, title, onClose }: { a: Analysis; audioUrl: string | null; title: string; onClose: () => void }) {
+export function Player({ a, audioUrl, title, notice, onClose }: { a: Analysis; audioUrl: string | null; title: string; notice?: string; onClose: () => void }) {
   const { notation, a4 } = useSettings();
   const [capo, setCapo] = useState(a.capo.fret);
   const [loop, setLoop] = useState<number | null>(null);
@@ -213,6 +213,11 @@ export function Player({ a, audioUrl, title, onClose }: { a: Analysis; audioUrl:
           </li>
           <li>{a.tuning.name}</li>
         </ul>
+        {notice && (
+          <p className={`pl-notice ${notice.startsWith('Non salvato') ? 'is-error' : ''}`} role="status">
+            {notice}
+          </p>
+        )}
         {(a.warnings.length > 0 || a.example) && (
           <details className="pl-notes">
             <summary>{a.example ? 'Brano di prova generato al computer' : 'Note sull’analisi'}</summary>

@@ -1172,6 +1172,160 @@ details ul {
   }
 }
 
+/* ---------------- analizza: i miei brani ---------------- */
+.btn-primary.small,
+.btn-danger.small {
+  padding: 7px 14px;
+  border-radius: var(--radius-s);
+}
+.btn-danger {
+  background: var(--danger);
+  color: var(--wood);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-m);
+  font-weight: 700;
+}
+.btn-text.danger {
+  color: var(--danger);
+}
+.lib {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lib-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.lib-head .h-sub {
+  margin: 0;
+}
+.lib-usage {
+  color: var(--bone-dim);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.lib-empty {
+  padding: 14px;
+  border: 1px dashed var(--wood-3);
+  border-radius: var(--radius-m);
+}
+.lib-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lib-item {
+  background: var(--wood-2);
+  border: 1px solid var(--wood-3);
+  border-radius: var(--radius-m);
+}
+.lib-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 4px;
+  min-height: 58px;
+}
+.lib-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-s);
+  padding: 6px 10px;
+  text-align: left;
+}
+.lib-open:hover .lib-title {
+  color: var(--pearl);
+}
+.lib-open[aria-busy='true'] {
+  opacity: 0.6;
+}
+.lib-title {
+  font-weight: 700;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+}
+.lib-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lib-tag {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--amber);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0 7px;
+  margin-left: 8px;
+  flex: none;
+}
+.lib-meta {
+  color: var(--bone-dim);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.lib-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+.lib-rename,
+.lib-confirm {
+  padding: 8px 10px;
+  flex-wrap: wrap;
+}
+.lib-rename .text-in {
+  min-width: 160px;
+}
+.lib-confirm > span {
+  flex: 1 1 200px;
+}
+.lib-confirm small {
+  display: block;
+  color: var(--bone-dim);
+}
+@media (max-width: 520px) {
+  /* su telefono le azioni scendono sotto il titolo */
+  .lib-row:not(.lib-rename):not(.lib-confirm) {
+    flex-wrap: wrap;
+    padding-bottom: 2px;
+  }
+  .lib-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: -6px;
+  }
+  .lib-confirm {
+    justify-content: flex-end;
+  }
+  .lib-confirm > span {
+    flex-basis: 100%;
+  }
+}
+.pl-notice {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--pearl);
+}
+.pl-notice.is-error {
+  color: var(--danger);
+}
+
 /* ---------------- analizza: caricamento ---------------- */
 .sr-only {
   position: absolute;

@@ -4,6 +4,8 @@ import sample from '../data/sample-analysis.json';
 import { Player } from './Player';
 import type { Analysis } from './analysis-types';
 import { needsHttps } from './serverUrl';
+import { SongLibrary } from './SongLibrary';
+import { library, titleFromFile, type SongMeta } from '../song/library';
 
 export type { Analysis } from './analysis-types';
 
@@ -18,11 +20,20 @@ interface JobState {
 /** Audio del brano di prova: file accanto all'app, o incorporato nella demo. */
 const SAMPLE_AUDIO = (globalThis as { PLETTRO_SAMPLE_AUDIO?: string }).PLETTRO_SAMPLE_AUDIO ?? './sample.mp3';
 
+/** Brano aperto nel player. `songId` è null per il brano d'esempio o se il salvataggio non è riuscito. */
+interface OpenSong {
+  a: Analysis;
+  audio: string | null;
+  title: string;
+  songId: string | null;
+  notice?: string;
+}
+
 export function Analyze() {
   const { backendUrl, set } = useSettings();
   const [file, setFile] = useState<File | null>(null);
   const [job, setJob] = useState<JobState | null>(null);
-  const [song, setSong] = useState<{ a: Analysis; audio: string | null; title: string } | null>(null);
+  const [song, setSong] = useState<OpenSong | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [server, setServer] = useState<{ ok: boolean; demucs?: boolean } | null>(null);
   const poll = useRef<number | null>(null);
@@ -49,9 +60,35 @@ export function Analyze() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backendUrl]);
 
-  function open(a: Analysis, audio: string | null, title: string) {
-    setSong({ a, audio, title });
+  function open(s: OpenSong) {
+    setSong(s);
     window.scrollTo({ top: 0 });
+  }
+
+  /** Audio in un URL temporaneo: uno solo alla volta, liberato al cambio di brano. */
+  function audioUrlFor(blob: Blob | null): string | null {
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+    objectUrl.current = blob ? URL.createObjectURL(blob) : null;
+    return objectUrl.current;
+  }
+
+  async function openSaved(m: SongMeta) {
+    const { data } = await library().load(m.id);
+    open({ a: data.analysis, audio: audioUrlFor(data.audio), title: m.title, songId: m.id });
+  }
+
+  /** Dopo un'analisi riuscita: il player si apre subito, il salvataggio va in parallelo. */
+  function openAndSave(result: Analysis, f: File) {
+    const title = titleFromFile(f.name) || 'Brano senza titolo';
+    open({ a: result, audio: audioUrlFor(f), title, songId: null, notice: 'Salvataggio in I miei brani…' });
+    void navigator.storage?.persist?.().catch(() => false);
+    library()
+      .save({ title, analysis: result, audio: f })
+      .then(
+        (m) => ({ songId: m.id, notice: 'Salvato in I miei brani.' }),
+        (e: Error) => ({ songId: null, notice: `Non salvato: ${e.message}` }),
+      )
+      .then((patch) => setSong((cur) => (cur && cur.a === result ? { ...cur, ...patch } : cur)));
   }
 
   async function send() {
@@ -74,9 +111,7 @@ export function Analyze() {
             if (s.error) setError(s.error);
             if (s.result) {
               // l'audio resta nel browser: serve per suonarci sopra
-              if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
-              objectUrl.current = URL.createObjectURL(file);
-              open(s.result, objectUrl.current, file.name.replace(/\.[^.]+$/, ''));
+              openAndSave(s.result, file);
               setJob(null);
             }
           }
@@ -94,12 +129,15 @@ export function Analyze() {
     }
   }
 
-  if (song) return <Player a={song.a} audioUrl={song.audio} title={song.title} onClose={() => setSong(null)} />;
+  if (song) return <Player a={song.a} audioUrl={song.audio} title={song.title} notice={song.notice} onClose={() => setSong(null)} />;
 
   const busy = !!job;
   const mixed = needsHttps(location.protocol, backendUrl);
   return (
     <section className="page analyze">
+      <SongLibrary onOpen={openSaved} />
+
+      <h3 className="h-sub">Analizza un brano</h3>
       <p className="hint">
         Carica una canzone: la analizzo e poi la suoni insieme a me. Ti mostro l'accordo di adesso, il prossimo, la pennata e quando spingere, battuta per battuta.
       </p>
@@ -128,7 +166,7 @@ export function Analyze() {
       )}
 
       <div className="or">oppure</div>
-      <button className="btn-secondary" onClick={() => open(sample as unknown as Analysis, SAMPLE_AUDIO, 'Brano di prova')}>
+      <button className="btn-secondary" onClick={() => open({ a: sample as unknown as Analysis, audio: SAMPLE_AUDIO, title: 'Brano di prova', songId: null })}>
         Prova con un brano di esempio
       </button>
 
