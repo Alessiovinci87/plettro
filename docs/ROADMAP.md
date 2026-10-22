@@ -1,4 +1,4 @@
-﻿# Roadmap Plettro
+# Roadmap Plettro
 
 Ciclo di sviluppo in 7 fasi (la 7ª aggiunta strada facendo). Ogni fase si chiude con: logica testata, `npm run build` e
 `npm test` verdi, screenshot a 1920 e 390 px (chiaro e scuro) controllati, commit e push.
@@ -7,14 +7,14 @@ Regole comuni: testi in italiano, stile e token di `styles.css`, niente `confirm
 
 ## Fase 1 – Libreria dei brani
 
-- [ ] Salvataggio in IndexedDB dopo un'analisi riuscita: analisi (JSON), audio (Blob),
+- [x] Salvataggio in IndexedDB dopo un'analisi riuscita: analisi (JSON), audio (Blob),
       titolo, durata, data
-- [ ] Errori gestiti, compresa la quota piena (messaggio chiaro, il player si apre lo stesso)
-- [ ] "I miei brani" in alto in Analizza: titolo, durata, tonalità, bpm, data
-- [ ] Tocco sul brano: apre subito il player
-- [ ] Rinomina, elimina con conferma nella pagina, spazio usato
-- [ ] Brano d'esempio separato dalla libreria
-- [ ] Test della libreria (fake-indexeddb)
+- [x] Errori gestiti, compresa la quota piena (messaggio chiaro, il player si apre lo stesso)
+- [x] "I miei brani" in alto in Analizza: titolo, durata, tonalità, bpm, data
+- [x] Tocco sul brano: apre subito il player
+- [x] Rinomina, elimina con conferma nella pagina, spazio usato
+- [x] Brano d'esempio separato dalla libreria
+- [x] Test della libreria (fake-indexeddb)
 
 ## Fase 2 – Correzione manuale nel player
 
@@ -76,3 +76,13 @@ Regole comuni: testi in italiano, stile e token di `styles.css`, niente `confirm
 ## Scelte fatte strada facendo
 
 Le scelte prese dove la richiesta lasciava margine sono annotate qui, fase per fase.
+
+### Fase 1
+
+- Il player si apre subito dopo l'analisi; il salvataggio va in parallelo e l'esito compare
+  sotto il titolo ("Salvato in I miei brani." o il motivo dell'errore).
+- Due archivi in IndexedDB: `meta` (elenco leggero) e `data` (analisi, originale, audio),
+  così l'elenco non carica mai l'audio.
+- Il titolo viene dal nome del file; viene chiesto al browser lo spazio persistente.
+- Il brano d'esempio non entra nella libreria.
+- Su telefono le azioni scendono sotto il titolo; il segno "corretto" resta visibile anche con titoli lunghi.
