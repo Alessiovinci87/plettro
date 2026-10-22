@@ -113,12 +113,14 @@ export function referenceTone(freq: number, seconds = 2.5) {
   });
 }
 
-export function click(when: number, accent: boolean, sub = false) {
+/** Click del metronomo; `volume` da 0 a 1 scala il livello normale. */
+export function click(when: number, accent: boolean, sub = false, volume = 1) {
+  if (volume <= 0) return;
   const c = audio();
   const o = c.createOscillator();
   const g = c.createGain();
   o.frequency.value = accent ? 1760 : sub ? 880 : 1320;
-  g.gain.setValueAtTime(accent ? 0.5 : sub ? 0.12 : 0.3, when);
+  g.gain.setValueAtTime((accent ? 0.5 : sub ? 0.12 : 0.3) * Math.min(1, volume), when);
   g.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
   o.connect(g).connect(out());
   o.start(when);

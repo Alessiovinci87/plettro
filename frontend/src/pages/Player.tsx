@@ -11,9 +11,12 @@ import { fmtTime, positionAt, sectionFirstBars, type Position } from './songTime
 import { library } from '../song/library';
 import { setBarChord } from '../song/edit';
 import { ChordPicker, SectionEditor } from './SongEdit';
+import {
+  beatPeriodAt, clicksBetween, countIn, inRange, loopTimes, nextRate, parsePrefs, PREFS_KEY, RATES, sameRange, sectionRange, tapBar, TRAINER_STARTS,
+  type LoopRange, type PracticePrefs, type Selection,
+} from '../song/practice';
 
 const STD = tuningMidis(STANDARD);
-const SPEEDS = [0.5, 0.75, 0.9, 1];
 const DYN_WORD = ['', 'Sussurrato', 'Morbido', 'Medio', 'Spinto', 'Al massimo'];
 
 /** Simbolo da suonare con il capotasto, nella notazione scelta. */
@@ -130,7 +133,22 @@ function useSongClock(audioUrl: string | null, duration: number) {
     if (audioRef.current) audioRef.current.playbackRate = r;
     setRateState(r);
   }
-  return { time, playing, rate, play, pause, seek, setRate, hasAudio: !!audioUrl && audioOk };
+  return { time, playing, rate, play, pause, seek, setRate, now, hasAudio: !!audioUrl && audioOk };
+}
+
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writeStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* navigazione privata: le preferenze valgono solo per questa visita */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -190,32 +208,124 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
   }, [songId]);
 
   const [capo, setCapo] = useState(a.capo.fret);
-  const [loop, setLoop] = useState<number | null>(null);
+  const [loop, setLoop] = useState<LoopRange | null>(null);
   const [follow, setFollow] = useState(true);
+  const [prefs, setPrefsState] = useState<PracticePrefs>(() => parsePrefs(readStorage(PREFS_KEY)));
+  const setPrefs = (p: Partial<PracticePrefs>) =>
+    setPrefsState((cur) => {
+      const next = { ...cur, ...p };
+      writeStorage(PREFS_KEY, JSON.stringify(next));
+      return next;
+    });
+  const [round, setRound] = useState(0);
+  const [selecting, setSelecting] = useState<Selection | null>(null);
   const clock = useSongClock(audioUrl, a.duration);
+  const clockRef = useRef(clock);
+  clockRef.current = clock;
   const firstBars = useMemo(() => sectionFirstBars(a), [a]);
   const pos = positionAt(a, clock.time, firstBars);
 
-  // ripetizione della sezione
+  // conteggio 1-2-3-4: click pianificati sull'orologio audio, poi parte il brano
+  const [counting, setCounting] = useState<number | null>(null);
+  const countTimers = useRef<number[]>([]);
+  const stopCount = () => {
+    countTimers.current.forEach((t) => window.clearTimeout(t));
+    countTimers.current = [];
+    setCounting(null);
+  };
+  useEffect(() => stopCount, []);
+  const startAfterCount = (from: number) => {
+    stopCount();
+    const c = clockRef.current;
+    const { clicks, total } = countIn(beatPeriodAt(a, from), a.meter, c.rate);
+    setCounting(0);
+    const t0 = audio().currentTime + 0.08;
+    clicks.forEach((dt, i) => {
+      click(t0 + dt, i === 0, false, Math.max(prefs.volume, 0.5));
+      countTimers.current.push(window.setTimeout(() => setCounting(i + 1), (0.08 + dt) * 1000));
+    });
+    countTimers.current.push(
+      window.setTimeout(() => {
+        setCounting(null);
+        countTimers.current = [];
+        clockRef.current.play();
+      }, (0.08 + total) * 1000),
+    );
+  };
+  const start = () => {
+    const c = clockRef.current;
+    let from = c.time >= a.duration - 0.05 ? 0 : c.time;
+    if (loop) {
+      const lt = loopTimes(a, loop);
+      if (from < lt.start - 0.5 || from >= lt.end - 0.02) from = lt.start;
+    }
+    if (from !== c.time) c.seek(from);
+    if (prefs.countIn) startAfterCount(from);
+    else c.play();
+  };
+  const togglePlay = () => {
+    if (counting !== null) stopCount();
+    else if (clock.playing) clock.pause();
+    else start();
+  };
+
+  // loop A–B: a fine giro torna all'inizio, con conteggio e velocità progressiva se attivi
   useEffect(() => {
-    if (loop === null) return;
-    const s = a.sections[loop];
-    if (clock.time >= s.end - 0.02 || clock.time < s.start - 0.5) clock.seek(s.start);
+    if (!loop || counting !== null) return;
+    const { start: ls, end: le } = loopTimes(a, loop);
+    if (clock.playing && clock.time >= le - 0.02) {
+      if (prefs.trainer && clock.rate < 1) clock.setRate(nextRate(clock.rate));
+      setRound((r) => r + 1);
+      if (prefs.countIn) {
+        clock.pause();
+        clock.seek(ls);
+        startAfterCount(ls);
+      } else clock.seek(ls);
+    } else if (clock.time < ls - 0.5 && clock.playing) clock.seek(ls);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clock.time, loop]);
 
-  // senza audio: click su ogni battito
-  const lastBeat = useRef(-1);
-  useEffect(() => {
-    if (clock.hasAudio || !clock.playing) return;
-    const b = pos.barIndex * 100 + pos.beatInBar;
-    if (pos.beatInBar >= 0 && b !== lastBeat.current) {
-      lastBeat.current = b;
-      click(audio().currentTime + 0.01, pos.beatInBar === 0);
+  const chooseLoop = (r: LoopRange | null) => {
+    setLoop(r);
+    setRound(r ? 1 : 0);
+    if (r && prefs.trainer) clock.setRate(prefs.trainerStart);
+  };
+  const setTrainer = (on: boolean) => {
+    setPrefs({ trainer: on });
+    if (on && loop) {
+      clock.setRate(prefs.trainerStart);
+      setRound(1);
     }
-  }, [clock.hasAudio, clock.playing, pos.barIndex, pos.beatInBar]);
+  };
 
-  const togglePlay = () => (clock.playing ? clock.pause() : clock.play());
+  // metronomo sopra il brano, sui battiti analizzati; senza audio è sempre acceso
+  const clickOn = prefs.metronome || !clock.hasAudio;
+  const volumeRef = useRef(prefs.volume);
+  volumeRef.current = clock.hasAudio ? prefs.volume : Math.max(prefs.volume, 0.6);
+  // il battito che chiude il loop è l'"uno" del giro dopo: non va pianificato prima del salto
+  const loopEndRef = useRef(Infinity);
+  loopEndRef.current = loop ? loopTimes(a, loop).end - 0.03 : Infinity;
+  useEffect(() => {
+    if (!clock.playing || !clickOn) return;
+    const LOOKAHEAD = 0.12;
+    // un po' indietro: il primo battito può essere appena passato quando l'audio riparte
+    const SLACK = 0.04;
+    let until = clockRef.current.now() - SLACK;
+    const tick = () => {
+      const c = clockRef.current;
+      const now = c.now();
+      // dopo un salto indietro (loop, ricerca) si ripianifica da qui
+      if (now < until - 0.3 || now > until + 1) until = now - SLACK;
+      const to = Math.min(now + LOOKAHEAD * c.rate, loopEndRef.current);
+      const ctxNow = audio().currentTime;
+      for (const k of clicksBetween(a, until, to)) click(ctxNow + Math.max(0, (k.t - now) / c.rate), k.accent, false, volumeRef.current);
+      until = Math.max(until, to);
+    };
+    tick();
+    const id = window.setInterval(tick, 25);
+    return () => window.clearInterval(id);
+  }, [clock.playing, clock.rate, clickOn, a]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'Space' && (e.target as HTMLElement)?.tagName !== 'INPUT') {
@@ -309,6 +419,57 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
             </div>
           </div>
         )}
+        <details className="pl-study">
+          <summary>
+            Strumenti di studio
+            {(prefs.countIn || prefs.metronome || prefs.trainer) && (
+              <span className="study-on">{[prefs.countIn && 'conteggio', prefs.metronome && 'click', prefs.trainer && 'progressivo'].filter(Boolean).join(' · ')}</span>
+            )}
+          </summary>
+          <div className="study">
+            <label className="check">
+              <input type="checkbox" checked={prefs.countIn} onChange={(e) => setPrefs({ countIn: e.target.checked })} />
+              <span>
+                Conteggio 1-2-3-4 <small>prima di partire e a ogni giro del loop</small>
+              </span>
+            </label>
+            <div className="study-row">
+              <label className="check">
+                <input type="checkbox" checked={clickOn} disabled={!clock.hasAudio} onChange={(e) => setPrefs({ metronome: e.target.checked })} />
+                <span>
+                  Click sui battiti <small>{clock.hasAudio ? 'sopra il brano' : 'sempre acceso senza audio'}</small>
+                </span>
+              </label>
+              <label className="study-vol" htmlFor="pl-click-vol">
+                Volume
+                <input id="pl-click-vol" type="range" min={0} max={100} step={5} value={Math.round(prefs.volume * 100)} onChange={(e) => setPrefs({ volume: Number(e.target.value) / 100 })} />
+              </label>
+            </div>
+            <div className="study-row">
+              <label className="check">
+                <input type="checkbox" checked={prefs.trainer} onChange={(e) => setTrainer(e.target.checked)} />
+                <span>
+                  Allenamento progressivo <small>+5% a ogni giro del loop, fino al 100%</small>
+                </span>
+              </label>
+              <label className="study-vol" htmlFor="pl-trainer-start">
+                Parti dal
+                <select id="pl-trainer-start" value={prefs.trainerStart} onChange={(e) => setPrefs({ trainerStart: Number(e.target.value) })}>
+                  {TRAINER_STARTS.map((r) => (
+                    <option key={r} value={r}>
+                      {Math.round(r * 100)}%
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="hint">
+              {loop
+                ? `Loop attivo: ${loopName(a, loop, firstBars)}.`
+                : 'Per il loop: "Ripeti" su una sezione, "Seleziona battute", oppure tieni premuta una battuta e poi tocca l’ultima.'}
+            </p>
+          </div>
+        </details>
       </header>
 
       <Stage a={a} pos={pos} section={section} capo={capo} sym={sym} notation={notation} started={clock.time > 0.01} onHear={(s) => {
@@ -318,20 +479,40 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
 
       <div className="sheet-head-row">
         <h3>La canzone</h3>
-        <label className="check small">
-          <input id="pl-follow" type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> Segui il brano
-        </label>
+        <div className="sheet-tools">
+          {!editing && (
+            <button className={`ss-loop ${selecting ? 'on' : ''}`} onClick={() => setSelecting(selecting ? null : { anchor: null, range: null })} aria-pressed={!!selecting}>
+              {selecting ? 'Annulla selezione' : 'Seleziona battute'}
+            </button>
+          )}
+          <label className="check small">
+            <input id="pl-follow" type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> Segui il brano
+          </label>
+        </div>
       </div>
+      {selecting && (
+        <p className="select-hint" role="status">
+          {selecting.anchor === null ? 'Tocca la prima battuta da ripetere.' : 'Ora tocca l’ultima battuta (o la stessa, per ripeterne una sola).'}
+        </p>
+      )}
       <SongSheet
         a={a}
         current={pos.sectionIndex}
         bar={pos.barInSection}
         sym={sym}
-        follow={follow && clock.playing && !editing}
+        follow={follow && clock.playing && !editing && !selecting}
         firstBars={firstBars}
         onSeek={(t) => clock.seek(t)}
         loop={loop}
-        onLoop={setLoop}
+        onLoop={chooseLoop}
+        selection={selecting}
+        onSelectBar={(g) => {
+          const next = tapBar(selecting ?? { anchor: null, range: null }, g);
+          if (next.anchor === null && next.range) {
+            chooseLoop(next.range);
+            setSelecting(null);
+          } else setSelecting(next);
+        }}
         edit={editing ? { capo, notation, apply } : null}
       />
 
@@ -351,7 +532,18 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
         </details>
       )}
 
-      <Transport a={a} clock={clock} pos={pos} loop={loop} onLoop={setLoop} onToggle={togglePlay} />
+      <Transport
+        a={a}
+        clock={clock}
+        pos={pos}
+        loop={loop}
+        loopLabel={loop ? loopName(a, loop, firstBars) : ''}
+        round={round}
+        trainer={prefs.trainer}
+        counting={counting}
+        onLoop={chooseLoop}
+        onToggle={togglePlay}
+      />
     </div>
   );
 }
@@ -433,10 +625,30 @@ interface SheetEdit {
   apply: (next: Analysis) => void;
 }
 
-const SongSheet = memo(function SongSheet({ a, current, bar, sym, follow, firstBars, onSeek, loop, onLoop, edit }: {
-  a: Analysis; current: number; bar: number; sym: (s: string) => string; follow: boolean; firstBars: number[]; onSeek: (t: number) => void; loop: number | null; onLoop: (i: number | null) => void; edit: SheetEdit | null;
+const LONG_PRESS_MS = 500;
+
+const SongSheet = memo(function SongSheet({ a, current, bar, sym, follow, firstBars, onSeek, loop, onLoop, selection, onSelectBar, edit }: {
+  a: Analysis; current: number; bar: number; sym: (s: string) => string; follow: boolean; firstBars: number[]; onSeek: (t: number) => void;
+  loop: LoopRange | null; onLoop: (r: LoopRange | null) => void; selection: Selection | null; onSelectBar: (globalBar: number) => void; edit: SheetEdit | null;
 }) {
   const refs = useRef<(HTMLElement | null)[]>([]);
+  // tocco lungo su una battuta: inizia la selezione del loop da lì
+  const press = useRef<{ timer: number; fired: boolean } | null>(null);
+  const pressStart = (g: number) => {
+    // ogni nuova pressione dimentica quella prima (il rilascio può cadere fuori dalla battuta)
+    press.current = null;
+    if (edit || selection) return;
+    const p = { timer: 0, fired: false };
+    p.timer = window.setTimeout(() => {
+      p.fired = true;
+      navigator.vibrate?.(15);
+      onSelectBar(g);
+    }, LONG_PRESS_MS);
+    press.current = p;
+  };
+  const pressEnd = () => {
+    if (press.current) window.clearTimeout(press.current.timer);
+  };
   const [picking, setPicking] = useState<{ section: number; bar: number } | null>(null);
   const editing = edit !== null;
   useEffect(() => {
@@ -467,9 +679,15 @@ const SongSheet = memo(function SongSheet({ a, current, bar, sym, follow, firstB
                   {fmtTime(s.start)} · {s.bars} {s.bars === 1 ? 'battuta' : 'battute'}
                 </span>
               </button>
-              <button className={`ss-loop ${loop === i ? 'on' : ''}`} onClick={() => onLoop(loop === i ? null : i)} aria-pressed={loop === i}>
-                {loop === i ? 'In ripetizione' : 'Ripeti'}
-              </button>
+              {(() => {
+                const r = sectionRange(a, i, firstBars);
+                const on = sameRange(loop, r);
+                return (
+                  <button className={`ss-loop ${on ? 'on' : ''}`} onClick={() => onLoop(on ? null : r)} aria-pressed={on}>
+                    {on ? 'In ripetizione' : 'Ripeti'}
+                  </button>
+                );
+              })()}
             </header>
             {edit && <SectionEditor key={`${s.label}|${s.strum.steps}`} a={a} index={i} onApply={edit.apply} />}
             {changes && !edit && <p className="ss-change">{changes}</p>}
@@ -477,12 +695,27 @@ const SongSheet = memo(function SongSheet({ a, current, bar, sym, follow, firstB
               {s.chart.map((b, k) => {
                 const t = a.downbeats[base + k] ?? s.start;
                 const picked = picking?.section === i && picking.bar === k;
+                const g = base + k;
+                const anchor = selection?.anchor === g;
                 return (
                   <button
                     key={k}
-                    className={`ss-bar ${i === current && k === bar ? 'now' : ''} ${picked ? 'picked' : ''}`}
-                    onClick={() => (edit ? setPicking(picked ? null : { section: i, bar: k }) : onSeek(t))}
-                    aria-label={`Battuta ${k + 1}: ${b.map((c) => (c === '–' ? 'nessun accordo' : sym(c))).join(', ')}${edit ? '. Tocca per cambiare' : ''}`}
+                    className={`ss-bar ${i === current && k === bar ? 'now' : ''} ${picked ? 'picked' : ''} ${inRange(loop, g) ? 'in-loop' : ''} ${anchor ? 'anchor' : ''}`}
+                    onClick={() => {
+                      if (press.current?.fired) {
+                        press.current = null;
+                        return;
+                      }
+                      if (edit) setPicking(picked ? null : { section: i, bar: k });
+                      else if (selection) onSelectBar(g);
+                      else onSeek(t);
+                    }}
+                    onPointerDown={() => pressStart(g)}
+                    onPointerUp={pressEnd}
+                    onPointerLeave={pressEnd}
+                    onPointerCancel={pressEnd}
+                    onContextMenu={(e) => e.preventDefault()}
+                    aria-label={`Battuta ${k + 1}: ${b.map((c) => (c === '–' ? 'nessun accordo' : sym(c))).join(', ')}${edit ? '. Tocca per cambiare' : selection ? '. Tocca per il loop' : ''}`}
                     aria-expanded={edit ? picked : undefined}
                   >
                     {b.map((c, j) => (
@@ -554,9 +787,18 @@ function describeChange(prev: Section | undefined, s: Section): string {
 
 // ---------------------------------------------------------------------------
 
-function Transport({ a, clock, pos, loop, onLoop, onToggle }: {
-  a: Analysis; clock: ReturnType<typeof useSongClock>; pos: Position; loop: number | null; onLoop: (i: number | null) => void; onToggle: () => void;
+/** Nome del loop: la sezione se coincide, altrimenti le battute (numerate da 1). */
+function loopName(a: Analysis, r: LoopRange, firstBars: number[]): string {
+  const i = a.sections.findIndex((_, k) => sameRange(r, sectionRange(a, k, firstBars)));
+  if (i >= 0) return a.sections[i].label;
+  return r.startBar === r.endBar ? `battuta ${r.startBar + 1}` : `battute ${r.startBar + 1}–${r.endBar + 1}`;
+}
+
+function Transport({ a, clock, pos, loop, loopLabel, round, trainer, counting, onLoop, onToggle }: {
+  a: Analysis; clock: ReturnType<typeof useSongClock>; pos: Position; loop: LoopRange | null; loopLabel: string; round: number; trainer: boolean; counting: number | null;
+  onLoop: (r: LoopRange | null) => void; onToggle: () => void;
 }) {
+  const lt = loop ? loopTimes(a, loop) : null;
   const track = useRef<HTMLDivElement | null>(null);
   const seekFromEvent = (clientX: number) => {
     const r = track.current!.getBoundingClientRect();
@@ -599,12 +841,13 @@ function Transport({ a, clock, pos, loop, onLoop, onToggle }: {
         {a.sections.map((s, i) => (
           <span
             key={i}
-            className={`tr-sec g${groups.indexOf(s.label.replace(/ \d+$/, '')) % 5} ${i === pos.sectionIndex ? 'cur' : ''} ${loop === i ? 'loop' : ''}`}
+            className={`tr-sec g${groups.indexOf(s.label.replace(/ \d+$/, '')) % 5} ${i === pos.sectionIndex ? 'cur' : ''}`}
             style={{ left: `${(s.start / a.duration) * 100}%`, width: `${((s.end - s.start) / a.duration) * 100}%` }}
           >
             <em>{s.label}</em>
           </span>
         ))}
+        {lt && <span className="tr-loop" style={{ left: `${(lt.start / a.duration) * 100}%`, width: `${((lt.end - lt.start) / a.duration) * 100}%` }} />}
         <span className="tr-head" style={{ left: `${(clock.time / a.duration) * 100}%` }} />
       </div>
       <div className="tr-controls">
@@ -615,8 +858,10 @@ function Transport({ a, clock, pos, loop, onLoop, onToggle }: {
           <button className="tr-btn" onClick={prevSection} aria-label="Sezione precedente">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 6l-9 6 9 6z" /></svg>
           </button>
-          <button className="tr-play" onClick={onToggle} aria-label={clock.playing ? 'Pausa' : 'Suona'}>
-            {clock.playing ? (
+          <button className={`tr-play ${counting !== null ? 'is-counting' : ''}`} onClick={onToggle} aria-label={counting !== null ? `Conteggio ${counting}: tocca per fermare` : clock.playing ? 'Pausa' : 'Suona'}>
+            {counting !== null ? (
+              <span className="tr-count">{counting || ''}</span>
+            ) : clock.playing ? (
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
             ) : (
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" /></svg>
@@ -629,7 +874,7 @@ function Transport({ a, clock, pos, loop, onLoop, onToggle }: {
         <label className="tr-speed">
           <span className="sr-only">Velocità</span>
           <select id="pl-speed" value={clock.rate} onChange={(e) => clock.setRate(Number(e.target.value))}>
-            {SPEEDS.map((s) => (
+            {RATES.map((s) => (
               <option key={s} value={s}>
                 {Math.round(s * 100)}%
               </option>
@@ -637,9 +882,10 @@ function Transport({ a, clock, pos, loop, onLoop, onToggle }: {
           </select>
         </label>
       </div>
-      {loop !== null && (
+      {loop && (
         <button className="tr-loopbar" onClick={() => onLoop(null)}>
-          Ripeti {a.sections[loop].label} · tocca per smettere
+          Ripeti {loopLabel}
+          {trainer && round > 0 ? ` · giro ${round} al ${Math.round(clock.rate * 100)}%` : ''} · tocca per smettere
         </button>
       )}
       {!clock.hasAudio && <p className="tr-note">Senza audio: segui il click del metronomo.</p>}

@@ -29,11 +29,11 @@ Regole comuni: testi in italiano, stile e token di `styles.css`, niente `confirm
 
 ## Fase 3 – Strumenti di studio nel player
 
-- [ ] Conteggio 1-2-3-4 prima di partire e a ogni ripartenza del loop (attivabile)
-- [ ] Loop A–B su battute: tocco lungo o modalità "Seleziona"
-- [ ] Allenamento progressivo: velocità iniziale, +5% a ogni giro fino al 100%
-- [ ] Click del metronomo sopra il brano, sui battiti analizzati, volume regolabile
-- [ ] Test della logica (conteggio, loop, velocità, pianificazione dei click)
+- [x] Conteggio 1-2-3-4 prima di partire e a ogni ripartenza del loop (attivabile)
+- [x] Loop A–B su battute: tocco lungo o modalità "Seleziona"
+- [x] Allenamento progressivo: velocità iniziale, +5% a ogni giro fino al 100%
+- [x] Click del metronomo sopra il brano, sui battiti analizzati, volume regolabile
+- [x] Test della logica (conteggio, loop, velocità, pianificazione dei click)
 
 ## Fase 4 – Accordi semplificati
 
@@ -102,3 +102,18 @@ Le scelte prese dove la richiesta lasciava margine sono annotate qui, fase per f
   d'accordo (prima ne riconosceva nove) e pronto per la ricerca della Fase 6.
 - Brano d'esempio: le correzioni restano in memoria, con un avviso.
 - Su telefono, in modifica, la scheda dell'accordo non resta fissa in alto per lasciare spazio al selettore.
+
+### Fase 3
+
+- Gli strumenti stanno in "Strumenti di studio" sotto il titolo del brano; le scelte restano nel browser
+  (`plettro.practice.v1`).
+- Il loop è un intervallo di battute: "Ripeti" su una sezione, "Seleziona battute" (due tocchi, in
+  qualunque ordine) oppure tocco lungo su una battuta e poi tocco sull'ultima.
+- Conteggio: un click per battito con il periodo dei battiti analizzati, rallentato con la velocità;
+  durante il conteggio il pulsante mostra il numero e lo si può toccare per fermarsi.
+- Allenamento progressivo: parte dalla velocità scelta (50–90%) appena c'è un loop, +5% a ogni giro;
+  il selettore della velocità ora va dal 50% al 100% a passi del 5%.
+- Metronomo pianificato sull'orologio audio con 120 ms di anticipo, accento sugli "uno"; l'"uno" che
+  chiude il loop non viene pianificato prima del salto (niente click doppio). Senza audio resta sempre acceso.
+- Tocco lungo: ogni nuova pressione azzera la precedente, perché il rilascio può cadere fuori dalla
+  battuta quando compare il suggerimento.

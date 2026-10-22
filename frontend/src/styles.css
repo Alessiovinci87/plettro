@@ -1527,6 +1527,78 @@ details ul {
 .ss-bar.picked {
   border: 2px solid var(--amber);
 }
+
+/* ---------------- player: studio ---------------- */
+.ss-bar {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+.ss-bar.in-loop {
+  box-shadow: inset 0 -4px 0 var(--pearl);
+}
+.ss-bar.anchor {
+  border: 2px solid var(--pearl);
+}
+.sheet-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.select-hint {
+  margin: -4px 0 0;
+  font-size: 0.88rem;
+  color: var(--pearl);
+}
+.pl-study summary {
+  color: var(--pearl);
+  font-weight: 600;
+}
+.study-on {
+  margin-left: 8px;
+  font-weight: 500;
+  font-size: 0.82rem;
+  color: var(--amber);
+}
+.study {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  max-width: 720px;
+  background: var(--wood-2);
+  border: 1px solid var(--wood-3);
+  border-radius: var(--radius-m);
+}
+.study .check {
+  align-items: flex-start;
+}
+.study .check small {
+  display: block;
+  color: var(--bone-dim);
+  font-size: 0.8rem;
+}
+.study-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.study-vol {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--bone-dim);
+}
+.study-vol input[type='range'] {
+  width: 140px;
+  accent-color: var(--pearl);
+}
+.study .hint {
+  margin: 0;
+}
 .sec-edit {
   display: flex;
   flex-direction: column;
@@ -2090,9 +2162,13 @@ details ul {
 .tr-sec.cur {
   opacity: 1;
 }
-.tr-sec.loop {
-  outline: 2px solid var(--bone);
-  outline-offset: -2px;
+.tr-loop {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 2px solid var(--bone);
+  border-radius: 4px;
+  pointer-events: none;
 }
 .tr-sec.g0 { background: #9aa4a8; }
 .tr-sec.g1 { background: #7fd1c1; }
@@ -2158,6 +2234,17 @@ details ul {
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+.tr-play.is-counting {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--wood);
+}
+.tr-count {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.7rem;
+  line-height: 1;
 }
 .tr-speed {
   justify-self: end;
