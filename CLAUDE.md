@@ -9,6 +9,10 @@ App per chitarristi in italiano. Monorepo:
     `tunings.ts` (preset, differenze, suggeritore), `pitch.ts` (YIN), `rhythm.ts` (pattern pennata).
   - `src/audio/engine.ts` Web Audio: Karplus-Strong intonato via playbackRate, click, note di riferimento.
   - `src/pages/` una pagina per sezione; `src/store.tsx` impostazioni in localStorage.
+  - `src/pages/Player.tsx` "Suona con il brano": segue l'audio caricato (resta nel browser, blob URL)
+    e mostra accordo attuale/prossimo, battito, sedicesimo della pennata, dinamica; foglio con tutte le
+    sezioni a battute, ripetizione sezione, velocità. Calcoli di posizione in `songTime.ts` (testati).
+    Tipi del JSON del backend in `analysis-types.ts`. Audio d'esempio in `public/sample.mp3`.
   - `src/data/chords-standard.json` generato da `scripts/convert_chords_db.py` (chords-db, MIT).
   - `src/data/sample-analysis.json` esempio di risposta del backend (brano sintetico).
 - `backend/` FastAPI. `app/analysis/` solo numpy/scipy; Demucs opzionale (`separation.py`).

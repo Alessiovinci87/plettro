@@ -79,9 +79,11 @@ suggeritore per tonalità e stile.
 **Ritmo**: metronomo (tap tempo, suddivisioni, metro) e 10 pattern di pennata suonati con
 l'accordo scelto.
 
-**Analizza**: carica un brano e ottieni per ogni sezione accordi a battute, pattern di pennata
-(giù/su), dinamica ("quando spingere"), profilo del suono e catena di effetti con modelli
-Helix, capotasto consigliato, accordatura, melodia indicativa con posizioni.
+**Suona con il brano** (sezione Analizza): carichi un brano, il backend lo analizza e poi lo suoni
+insieme all'app. Mentre il brano va, vedi l'accordo di adesso con la diteggiatura, il prossimo con
+il conto dei battiti, il battito della misura e il sedicesimo della pennata (giù/su), la dinamica
+("quando spingere"). Sotto c'è tutta la canzone a battute: tocchi una battuta per saltarci, ripeti
+una sezione, rallenti fino al 50%. Per ogni sezione: suono ed effetti con modelli Helix.
 
 ## Analisi: come funziona e quanto è affidabile
 
