@@ -31,7 +31,8 @@ export function Fretboard({ tuning, frets = 15, mark, leftHanded, onPick }: Prop
 
   return (
     <div className="neck-scroll">
-      <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className="neck" role="img" aria-label="Manico della chitarra">
+      {/* minWidth: su schermi stretti si scorre invece di rimpicciolire note e numeri */}
+      <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} style={{ minWidth: w }} className="neck" role="img" aria-label="Manico della chitarra">
         <rect x={Math.min(wireX(0), wireX(frets))} y={padT - 8} width={frets * fw} height={(n - 1) * sh + 16} className="neck-wood" />
         {INLAY.filter((f) => f <= frets).map((f) => (
           <circle key={f} cx={fx(f)} cy={padT + ((n - 1) * sh) / 2} r={6} className="neck-inlay" />

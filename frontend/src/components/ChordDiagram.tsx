@@ -74,7 +74,7 @@ export function ChordDiagram({
   const barreBars = fingerBars(voicing);
   const inBarre = (s: number, f: number) => barreBars.some((b) => b.fret === f && s >= b.from && s <= b.to);
 
-  const fs = label === 'finger' ? r * 1.25 : r * (label === 'note' ? 1.05 : 1);
+  const fs = label === 'finger' ? r * 1.45 : r * (label === 'note' ? 1.1 : 1.05);
   const mark = 4 * u;
   const lw = Math.max(u, 1); // linee della griglia mai sotto il pixel
 

@@ -668,7 +668,7 @@ select {
   color: var(--pearl);
 }
 .sb-n {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   color: var(--bone-dim);
 }
 .sb-note {
@@ -955,6 +955,13 @@ select {
 }
 .neck {
   display: block;
+}
+@media (min-width: 960px) {
+  /* su computer il manico riempie la colonna: note e numeri crescono con lui */
+  .neck {
+    width: 100%;
+    height: auto;
+  }
 }
 .neck-wood {
   fill: #3b2a22;
@@ -1421,7 +1428,11 @@ details ul {
   color: #6b5d53;
 }
 .st-diagram {
-  min-width: 100px;
+  min-width: 112px;
+}
+.st-diagram svg {
+  width: 112px;
+  height: auto;
 }
 .st-next {
   display: flex;
@@ -1832,11 +1843,10 @@ details ul {
     gap: 12px;
   }
   .st-diagram {
-    min-width: 132px;
+    min-width: 160px;
   }
   .st-diagram svg {
-    width: 132px;
-    height: auto;
+    width: 160px;
   }
   .st-strum span {
     height: 40px;
