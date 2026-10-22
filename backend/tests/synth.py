@@ -50,6 +50,9 @@ def strum(chord: str, down: bool, dur: float, gain: float, rng) -> np.ndarray:
 
 
 def song(bpm: float = 100, seed: int = 1, bass_on: bool = True, drums_on: bool = True) -> tuple[np.ndarray, dict]:
+    # la cache cambia quanti numeri casuali consuma pluck: senza svuotarla
+    # la prima chiamata produrrebbe un brano diverso dalle successive
+    _CACHE.clear()
     rng = np.random.default_rng(seed)
     beat = 60 / bpm
     plan = [
