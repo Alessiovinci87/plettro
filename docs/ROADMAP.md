@@ -18,14 +18,14 @@ Regole comuni: testi in italiano, stile e token di `styles.css`, niente `confirm
 
 ## Fase 2 – Correzione manuale nel player
 
-- [ ] Pulsante "Modifica"
-- [ ] Tocco su una battuta: scelta dell'accordo (tonica + tipo) con suggerimenti dalla tonalità
-- [ ] Rinomina sezione
-- [ ] Inizio della sezione spostato di ± una battuta
-- [ ] Pattern di pennata della sezione: editor a 16 sedicesimi (giù, su, leggera, vuoto)
-- [ ] Correzioni salvate nel brano della libreria, "Ripristina analisi" torna all'originale
-- [ ] Gli accordi corretti aggiornano anche `chords[]`
-- [ ] Test delle modifiche (funzioni pure)
+- [x] Pulsante "Modifica"
+- [x] Tocco su una battuta: scelta dell'accordo (tonica + tipo) con suggerimenti dalla tonalità
+- [x] Rinomina sezione
+- [x] Inizio della sezione spostato di ± una battuta
+- [x] Pattern di pennata della sezione: editor a 16 sedicesimi (giù, su, leggera, vuoto)
+- [x] Correzioni salvate nel brano della libreria, "Ripristina analisi" torna all'originale
+- [x] Gli accordi corretti aggiornano anche `chords[]`
+- [x] Test delle modifiche (funzioni pure)
 
 ## Fase 3 – Strumenti di studio nel player
 
@@ -86,3 +86,19 @@ Le scelte prese dove la richiesta lasciava margine sono annotate qui, fase per f
 - Il titolo viene dal nome del file; viene chiesto al browser lo spazio persistente.
 - Il brano d'esempio non entra nella libreria.
 - Su telefono le azioni scendono sotto il titolo; il segno "corretto" resta visibile anche con titoli lunghi.
+
+### Fase 2
+
+- I nomi nel selettore sono quelli da suonare con il capotasto; nell'analisi si salva il suono
+  reale, così il capotasto si può cambiare dopo senza rovinare le correzioni.
+- Suggerimenti: i 7 accordi della tonalità (in minore anche il V maggiore), poi quelli già nel brano.
+- Un accordo scelto occupa tutta la battuta; in `chords[]` taglia gli accordi sovrapposti e si unisce
+  ai vicini con lo stesso nome. Gli accordi delle sezioni si ricalcolano come fa il server.
+- Lo spostamento dell'inizio vale dalla seconda sezione in poi; ogni sezione tiene almeno una battuta.
+- Pennata: si sceglie il colpo (giù, su, leggera, vuoto) e si toccano le caselle; "leggera" va giù
+  sui battiti e sugli ottavi, su sui sedicesimi in levare. Si può partire da un pattern della pagina Ritmo.
+  Il consiglio sotto la pennata viene riscritto dal pattern.
+- Nuovo lettore di nomi d'accordo in `theory.ts` (`parseChord`), usato dal player per tutti i tipi
+  d'accordo (prima ne riconosceva nove) e pronto per la ricerca della Fase 6.
+- Brano d'esempio: le correzioni restano in memoria, con un avviso.
+- Su telefono, in modifica, la scheda dell'accordo non resta fissa in alto per lasciare spazio al selettore.

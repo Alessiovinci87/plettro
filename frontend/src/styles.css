@@ -1460,6 +1460,201 @@ details ul {
 .pl-title .btn-text {
   flex: none;
 }
+.pl-title-actions {
+  display: flex;
+  flex: none;
+  gap: 10px;
+}
+.btn-text.is-on {
+  color: var(--amber);
+}
+
+/* ---------------- player: modifica ---------------- */
+.btn-secondary.small {
+  padding: 6px 12px;
+  border-radius: var(--radius-s);
+  font-size: 0.9rem;
+}
+.btn-secondary:disabled,
+.btn-text:disabled {
+  opacity: 0.4;
+}
+@media (max-width: 959px) {
+  /* in modifica la scheda non resta fissa: serve spazio per scegliere */
+  .player.is-editing .stage {
+    position: static;
+  }
+}
+.edit-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--wood-2);
+  border: 1px solid var(--amber);
+  border-radius: var(--radius-m);
+  font-size: 0.9rem;
+}
+.edit-bar p {
+  margin: 0;
+}
+.edit-note {
+  color: var(--bone-dim);
+}
+.edit-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.edit-save {
+  color: var(--pearl);
+  font-size: 0.85rem;
+}
+.edit-save.is-error {
+  color: var(--danger);
+}
+.edit-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.song-sec.is-editing .ss-bar {
+  border-style: dashed;
+}
+.ss-bar.picked {
+  border: 2px solid var(--amber);
+}
+.sec-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--wood-2);
+  border: 1px dashed var(--wood-3);
+  border-radius: var(--radius-s);
+}
+.se-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.se-row .text-in {
+  flex: 1 1 160px;
+}
+.se-move span {
+  font-size: 0.85rem;
+  color: var(--bone-dim);
+  margin-right: auto;
+}
+.se-strum-open {
+  align-self: flex-start;
+}
+.se-strum {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.se-strum .hint {
+  margin: 0;
+}
+.chord-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--wood-2);
+  border: 2px solid var(--amber);
+  border-radius: var(--radius-m);
+}
+.cp-head {
+  margin: 0;
+}
+.cp-head small {
+  color: var(--bone-dim);
+}
+.cp-label {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--bone-dim);
+}
+.cp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cp-roots {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.cp-roots .chip {
+  padding: 7px 0;
+}
+.cp-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 4px;
+}
+
+/* editor della pennata (player e Ritmo) */
+.strum-ed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.strum-brush {
+  align-self: flex-start;
+  max-width: 100%;
+}
+.strum-grid {
+  display: grid;
+  gap: 3px;
+}
+.strum-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0 6px;
+  min-height: 52px;
+  border: 1px solid var(--wood-3);
+  border-radius: 6px;
+  background: var(--wood);
+  color: var(--bone);
+}
+.strum-cell.beat {
+  border-left: 2px solid var(--bone-dim);
+}
+.strum-cell.hit {
+  background: var(--bone);
+  color: var(--wood);
+}
+.strum-cell.soft {
+  background: color-mix(in srgb, var(--bone) 35%, var(--wood));
+}
+.strum-count {
+  font-size: 0.7rem;
+  color: inherit;
+  opacity: 0.7;
+}
+.strum-mark {
+  font-weight: 700;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+@media (max-width: 520px) {
+  .strum-cell {
+    min-height: 46px;
+  }
+  .strum-mark {
+    font-size: 1rem;
+  }
+}
 .pl-facts {
   list-style: none;
   margin: 0;

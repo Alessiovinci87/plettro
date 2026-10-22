@@ -121,6 +121,100 @@ export function chordSymbol(rootPc: number, q: Quality, notation: Notation = 'in
   return bassPc === undefined || bassPc === mod12(rootPc) ? s : `${s}/${pcName(bassPc, notation)}`;
 }
 
+// ---------------------------------------------------------------------------
+// Lettura dei nomi d'accordo scritti a mano ("F#m7b5", "Do maj7", "Bb/D")
+
+const IT_ROOT: [RegExp, string][] = [
+  [/^sol/i, 'G'],
+  [/^do/i, 'C'],
+  [/^re/i, 'D'],
+  [/^mi(?![n])/i, 'E'],
+  [/^fa/i, 'F'],
+  [/^la/i, 'A'],
+  [/^si/i, 'B'],
+];
+
+/** Suffisso normalizzato (senza spazi e parentesi) → id della qualità. */
+const SUFFIX: Record<string, string> = Object.fromEntries(QUALITIES.map((q) => [q.symbol.replace(/[()]/g, ''), q.id]));
+Object.assign(SUFFIX, {
+  maj: 'major', M: 'major', min: 'minor', mi: 'minor', '-': 'minor',
+  M7: 'maj7', Δ: 'maj7', Δ7: 'maj7', '7+': 'maj7', ma7: 'maj7', '7M': 'maj7',
+  min7: 'm7', mi7: 'm7', '-7': 'm7',
+  ø: 'm7b5', ø7: 'm7b5', min7b5: 'm7b5', '-7b5': 'm7b5',
+  '°': 'dim', o: 'dim', '°7': 'dim7', o7: 'dim7',
+  '+': 'aug', '#5': 'aug', '+7': 'aug7', aug7: 'aug7',
+  sus: 'sus4', add2: 'add9', '2': 'sus2', '4': 'sus4', '69': '69', m69: 'm69',
+  mM7: 'mmaj7', minmaj7: 'mmaj7', 'm/maj7': 'mmaj7', mmaj9: 'mmaj9',
+  M9: 'maj9', M11: 'maj11', M13: 'maj13', min9: 'm9', min11: 'm11', min6: 'm6',
+});
+
+/** `flat`: false per leggere "Bb5" anche come B con quinta bemolle. */
+function parseRoot(s: string, flat = true): { pc: number; rest: string; acc: boolean } | null {
+  let t = s.replace(/♯/g, '#').replace(/♭/g, 'b');
+  let letter: string | null = null;
+  for (const [re, l] of IT_ROOT) {
+    const m = re.exec(t);
+    if (m) {
+      letter = l;
+      t = t.slice(m[0].length);
+      break;
+    }
+  }
+  if (!letter) {
+    const m = /^[A-Ga-g]/.exec(t);
+    if (!m) return null;
+    letter = m[0].toUpperCase();
+    t = t.slice(1);
+  }
+  let pc = SHARPS.indexOf(letter);
+  const acc = (flat ? /^[#b]/ : /^#/).exec(t);
+  if (acc) {
+    pc += acc[0] === '#' ? 1 : -1;
+    t = t.slice(1);
+  }
+  return { pc: mod12(pc), rest: t, acc: !!acc };
+}
+
+function qualityOf(raw: string): Quality | null {
+  const s = raw.replace(/[\s()]/g, '');
+  const id = SUFFIX[s] ?? SUFFIX[s.toLowerCase()];
+  return id ? QUALITY_BY_ID[id] : null;
+}
+
+export interface ParsedChord {
+  root: number;
+  quality: Quality;
+  bass?: number;
+}
+
+/**
+ * Legge un accordo scritto in notazione internazionale o italiana:
+ * "F#m7b5", "Do maj7", "Bb/D", "Lam", "Sol7", "C°", "AΔ7". Null se non è un accordo noto.
+ */
+export function parseChord(text: string): ParsedChord | null {
+  const t = text.trim();
+  if (!t) return null;
+  const slash = t.lastIndexOf('/');
+  let body = t;
+  let bass: number | undefined;
+  // "6/9" non è un basso
+  if (slash > 0 && !/6\/9$/.test(t)) {
+    const b = parseRoot(t.slice(slash + 1).trim());
+    if (!b || b.rest.trim()) return null;
+    bass = b.pc;
+    body = t.slice(0, slash);
+  }
+  let r = parseRoot(body);
+  if (!r) return null;
+  let q = qualityOf(r.rest);
+  if (!q && r.acc) {
+    r = parseRoot(body, false)!;
+    q = qualityOf(r.rest);
+  }
+  if (!q) return null;
+  return bass === undefined || bass === r.pc ? { root: r.pc, quality: q } : { root: r.pc, quality: q, bass };
+}
+
 const DEGREE: Record<number, string> = {
   0: '1', 1: 'b9', 2: '9', 3: 'b3', 4: '3', 5: '11', 6: 'b5', 7: '5', 8: '#5', 9: '6', 10: 'b7', 11: '7',
 };

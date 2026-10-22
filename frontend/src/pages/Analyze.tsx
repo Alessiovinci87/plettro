@@ -27,6 +27,9 @@ interface OpenSong {
   title: string;
   songId: string | null;
   notice?: string;
+  /** Per i brani della libreria: analisi del server e stato delle correzioni. */
+  original?: Analysis;
+  edited?: boolean;
 }
 
 export function Analyze() {
@@ -73,8 +76,8 @@ export function Analyze() {
   }
 
   async function openSaved(m: SongMeta) {
-    const { data } = await library().load(m.id);
-    open({ a: data.analysis, audio: audioUrlFor(data.audio), title: m.title, songId: m.id });
+    const { meta, data } = await library().load(m.id);
+    open({ a: data.analysis, original: data.original, edited: meta.edited, audio: audioUrlFor(data.audio), title: meta.title, songId: m.id });
   }
 
   /** Dopo un'analisi riuscita: il player si apre subito, il salvataggio va in parallelo. */
@@ -129,7 +132,19 @@ export function Analyze() {
     }
   }
 
-  if (song) return <Player a={song.a} audioUrl={song.audio} title={song.title} notice={song.notice} onClose={() => setSong(null)} />;
+  if (song)
+    return (
+      <Player
+        a={song.a}
+        original={song.original}
+        edited={song.edited}
+        songId={song.songId}
+        audioUrl={song.audio}
+        title={song.title}
+        notice={song.notice}
+        onClose={() => setSong(null)}
+      />
+    );
 
   const busy = !!job;
   const mixed = needsHttps(location.protocol, backendUrl);

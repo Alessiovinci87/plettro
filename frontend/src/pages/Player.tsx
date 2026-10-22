@@ -2,41 +2,35 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '../store';
 import { ChordDiagram } from '../components/ChordDiagram';
-import { chordSymbol, midiName, mod12, pcName, QUALITY_BY_ID, type Notation } from '../music/theory';
+import { chordSymbol, midiName, mod12, parseChord, pcName, type Notation, type Quality } from '../music/theory';
 import { getVoicings, sounding, workFret, type Voicing } from '../music/voicings';
 import { STANDARD, tuningMidis } from '../music/tunings';
 import { audio, click, strum } from '../audio/engine';
 import type { Analysis, Section } from './analysis-types';
 import { fmtTime, positionAt, sectionFirstBars, type Position } from './songTime';
+import { library } from '../song/library';
+import { setBarChord } from '../song/edit';
+import { ChordPicker, SectionEditor } from './SongEdit';
 
 const STD = tuningMidis(STANDARD);
-const ROOT_OF: Record<string, number> = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11 };
-const SUFFIX_TO_Q: [string, string][] = [['maj7', 'maj7'], ['m7', 'm7'], ['sus4', 'sus4'], ['sus2', 'sus2'], ['dim', 'dim'], ['7', '7'], ['m', 'minor'], ['5', '5'], ['', 'major']];
 const SPEEDS = [0.5, 0.75, 0.9, 1];
 const DYN_WORD = ['', 'Sussurrato', 'Morbido', 'Medio', 'Spinto', 'Al massimo'];
 
-function parseSymbol(sym: string): { root: number; q: string } | null {
-  const m = /^([A-G](?:#|b)?)(.*)$/.exec(sym);
-  if (!m || ROOT_OF[m[1]] === undefined) return null;
-  const q = SUFFIX_TO_Q.find(([s]) => s === m[2])?.[1];
-  return q ? { root: ROOT_OF[m[1]], q } : null;
-}
-
 /** Simbolo da suonare con il capotasto, nella notazione scelta. */
 function playSymbol(sym: string, capo: number, notation: Notation): string {
-  const p = parseSymbol(sym);
-  return p ? chordSymbol(mod12(p.root - capo), QUALITY_BY_ID[p.q], notation) : sym;
+  const p = parseChord(sym);
+  return p ? chordSymbol(mod12(p.root - capo), p.quality, notation, p.bass === undefined ? undefined : mod12(p.bass - capo)) : sym;
 }
 
 const shapeCache = new Map<string, Voicing | null>();
-function shapeFor(sym: string, capo: number): { v: Voicing; root: number; q: string } | null {
-  const p = parseSymbol(sym);
+function shapeFor(sym: string, capo: number): { v: Voicing; root: number; q: Quality } | null {
+  const p = parseChord(sym);
   if (!p) return null;
   const root = mod12(p.root - capo);
-  const key = `${root}|${p.q}`;
-  if (!shapeCache.has(key)) shapeCache.set(key, getVoicings(root, QUALITY_BY_ID[p.q], STD, true)[0] ?? null);
+  const key = `${root}|${p.quality.id}`;
+  if (!shapeCache.has(key)) shapeCache.set(key, getVoicings(root, p.quality, STD, true)[0] ?? null);
   const v = shapeCache.get(key);
-  return v ? { v, root, q: p.q } : null;
+  return v ? { v, root, q: p.quality } : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,8 +135,60 @@ function useSongClock(audioUrl: string | null, duration: number) {
 
 // ---------------------------------------------------------------------------
 
-export function Player({ a, audioUrl, title, notice, onClose }: { a: Analysis; audioUrl: string | null; title: string; notice?: string; onClose: () => void }) {
+export interface PlayerProps {
+  a: Analysis;
+  /** Analisi del server, per "Ripristina analisi" (se manca è `a`). */
+  original?: Analysis;
+  /** true se `a` contiene già correzioni. */
+  edited?: boolean;
+  /** Brano della libreria in cui salvare le correzioni; null per il brano d'esempio. */
+  songId: string | null;
+  audioUrl: string | null;
+  title: string;
+  notice?: string;
+  onClose: () => void;
+}
+
+type SaveState = { kind: 'idle' | 'saving' | 'saved' } | { kind: 'error'; message: string };
+
+export function Player({ a: initial, original = initial, edited: editedAtOpen = false, songId, audioUrl, title, notice, onClose }: PlayerProps) {
   const { notation, a4 } = useSettings();
+  const [a, setA] = useState(initial);
+  const [editing, setEditing] = useState(false);
+  const [edited, setEdited] = useState(editedAtOpen);
+  const [save, setSave] = useState<SaveState>({ kind: 'idle' });
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const persist = (next: Analysis | 'reset', id = songId) => {
+    if (!id) return;
+    setSave({ kind: 'saving' });
+    library()
+      .updateAnalysis(id, next)
+      .then(
+        () => setSave({ kind: 'saved' }),
+        (e: Error) => setSave({ kind: 'error', message: e.message }),
+      );
+  };
+  const apply = (next: Analysis) => {
+    if (next === a) return;
+    setA(next);
+    setEdited(true);
+    persist(next);
+  };
+  const reset = () => {
+    setA(original);
+    setEdited(false);
+    setConfirmReset(false);
+    persist('reset');
+  };
+  // il salvataggio del brano nuovo può finire dopo le prime correzioni: le scrive appena c'è il brano
+  const savedId = useRef(songId);
+  useEffect(() => {
+    if (songId && songId !== savedId.current && edited) persist(a, songId);
+    savedId.current = songId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songId]);
+
   const [capo, setCapo] = useState(a.capo.fret);
   const [loop, setLoop] = useState<number | null>(null);
   const [follow, setFollow] = useState(true);
@@ -183,16 +229,21 @@ export function Player({ a, audioUrl, title, notice, onClose }: { a: Analysis; a
 
   const section = a.sections[Math.max(0, pos.sectionIndex)];
   const sym = (s: string) => playSymbol(s, capo, notation);
-  const keyName = a.key.name.replace(/^([A-G][#b]?)/, (n) => pcName(ROOT_OF[n] ?? 0, notation));
+  const keyName = a.key.name.replace(/^[A-G][#b]?/, pcName(a.key.tonic, notation));
 
   return (
-    <div className="player">
+    <div className={`player ${editing ? 'is-editing' : ''}`}>
       <header className="pl-head">
         <div className="pl-title">
           <h2>{title}</h2>
-          <button className="btn-text" onClick={onClose}>
-            Cambia brano
-          </button>
+          <div className="pl-title-actions">
+            <button className={`btn-text ${editing ? 'is-on' : ''}`} onClick={() => setEditing(!editing)} aria-pressed={editing}>
+              {editing ? 'Fine modifiche' : 'Modifica'}
+            </button>
+            <button className="btn-text" onClick={onClose}>
+              Cambia brano
+            </button>
+          </div>
         </div>
         <ul className="pl-facts" aria-label="Dati del brano">
           <li>
@@ -230,6 +281,34 @@ export function Player({ a, audioUrl, title, notice, onClose }: { a: Analysis; a
             </ul>
           </details>
         )}
+        {editing && (
+          <div className="edit-bar" role="region" aria-label="Modifica">
+            <p>
+              Tocca una battuta per cambiare l'accordo. Nome, inizio e pennata sono in testa a ogni sezione.
+              {!songId && <span className="edit-note"> Brano d'esempio: le correzioni restano finché non cambi brano.</span>}
+            </p>
+            <div className="edit-status">
+              <span className={`edit-save ${save.kind === 'error' ? 'is-error' : ''}`} role="status">
+                {save.kind === 'saving' ? 'Salvo…' : save.kind === 'saved' ? 'Correzioni salvate.' : save.kind === 'error' ? `Non salvato: ${save.message}` : edited ? 'Brano corretto a mano.' : ''}
+              </span>
+              {confirmReset ? (
+                <span className="edit-confirm" role="group" aria-label="Conferma ripristino">
+                  Tornare all'analisi originale? Le correzioni spariscono.
+                  <button className="btn-danger small" onClick={reset} autoFocus>
+                    Ripristina
+                  </button>
+                  <button className="btn-text" onClick={() => setConfirmReset(false)}>
+                    Annulla
+                  </button>
+                </span>
+              ) : (
+                <button className="btn-text danger" disabled={!edited} onClick={() => setConfirmReset(true)}>
+                  Ripristina analisi
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       <Stage a={a} pos={pos} section={section} capo={capo} sym={sym} notation={notation} started={clock.time > 0.01} onHear={(s) => {
@@ -243,7 +322,18 @@ export function Player({ a, audioUrl, title, notice, onClose }: { a: Analysis; a
           <input id="pl-follow" type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> Segui il brano
         </label>
       </div>
-      <SongSheet a={a} current={pos.sectionIndex} bar={pos.barInSection} sym={sym} follow={follow && clock.playing} firstBars={firstBars} onSeek={(t) => clock.seek(t)} loop={loop} onLoop={setLoop} />
+      <SongSheet
+        a={a}
+        current={pos.sectionIndex}
+        bar={pos.barInSection}
+        sym={sym}
+        follow={follow && clock.playing && !editing}
+        firstBars={firstBars}
+        onSeek={(t) => clock.seek(t)}
+        loop={loop}
+        onLoop={setLoop}
+        edit={editing ? { capo, notation, apply } : null}
+      />
 
       {a.melody.notes.length > 0 && (
         <details className="pl-extra">
@@ -303,7 +393,7 @@ function Stage({ a, pos, section, capo, sym, notation, started, onHear }: {
           {shape && <span className="st-fret">{workFret(shape.v) <= 1 ? 'tasti 1–4' : `${workFret(shape.v)}º tasto`}</span>}
         </button>
         <div className="st-diagram">
-          {shape ? <ChordDiagram voicing={shape.v} tuning={STD} rootPc={shape.root} quality={QUALITY_BY_ID[shape.q]} width={100} notation={notation} /> : null}
+          {shape ? <ChordDiagram voicing={shape.v} tuning={STD} rootPc={shape.root} quality={shape.q} width={100} notation={notation} /> : null}
         </div>
         <div className={`st-next ${soon ? 'is-soon' : ''}`}>
           <span className="st-label">
@@ -337,10 +427,21 @@ function Stage({ a, pos, section, capo, sym, notation, started, onHear }: {
 
 // ---------------------------------------------------------------------------
 
-const SongSheet = memo(function SongSheet({ a, current, bar, sym, follow, firstBars, onSeek, loop, onLoop }: {
-  a: Analysis; current: number; bar: number; sym: (s: string) => string; follow: boolean; firstBars: number[]; onSeek: (t: number) => void; loop: number | null; onLoop: (i: number | null) => void;
+interface SheetEdit {
+  capo: number;
+  notation: Notation;
+  apply: (next: Analysis) => void;
+}
+
+const SongSheet = memo(function SongSheet({ a, current, bar, sym, follow, firstBars, onSeek, loop, onLoop, edit }: {
+  a: Analysis; current: number; bar: number; sym: (s: string) => string; follow: boolean; firstBars: number[]; onSeek: (t: number) => void; loop: number | null; onLoop: (i: number | null) => void; edit: SheetEdit | null;
 }) {
   const refs = useRef<(HTMLElement | null)[]>([]);
+  const [picking, setPicking] = useState<{ section: number; bar: number } | null>(null);
+  const editing = edit !== null;
+  useEffect(() => {
+    if (!editing) setPicking(null);
+  }, [editing]);
   useEffect(() => {
     if (!follow || current < 0) return;
     refs.current[current]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -358,24 +459,32 @@ const SongSheet = memo(function SongSheet({ a, current, bar, sym, follow, firstB
             ref={(el) => {
               refs.current[i] = el;
             }}
-            className={`song-sec ${i === current ? 'is-current' : ''}`}>
+            className={`song-sec ${i === current ? 'is-current' : ''} ${edit ? 'is-editing' : ''}`}>
             <header>
               <button className="ss-title" onClick={() => onSeek(s.start)}>
                 <span className="ss-name">{s.label}</span>
                 <span className="ss-time">
-                  {fmtTime(s.start)} · {s.bars} battute
+                  {fmtTime(s.start)} · {s.bars} {s.bars === 1 ? 'battuta' : 'battute'}
                 </span>
               </button>
               <button className={`ss-loop ${loop === i ? 'on' : ''}`} onClick={() => onLoop(loop === i ? null : i)} aria-pressed={loop === i}>
                 {loop === i ? 'In ripetizione' : 'Ripeti'}
               </button>
             </header>
-            {changes && <p className="ss-change">{changes}</p>}
+            {edit && <SectionEditor key={`${s.label}|${s.strum.steps}`} a={a} index={i} onApply={edit.apply} />}
+            {changes && !edit && <p className="ss-change">{changes}</p>}
             <div className="ss-bars">
               {s.chart.map((b, k) => {
                 const t = a.downbeats[base + k] ?? s.start;
+                const picked = picking?.section === i && picking.bar === k;
                 return (
-                  <button key={k} className={`ss-bar ${i === current && k === bar ? 'now' : ''}`} onClick={() => onSeek(t)} aria-label={`Battuta ${k + 1}: ${b.join(', ')}`}>
+                  <button
+                    key={k}
+                    className={`ss-bar ${i === current && k === bar ? 'now' : ''} ${picked ? 'picked' : ''}`}
+                    onClick={() => (edit ? setPicking(picked ? null : { section: i, bar: k }) : onSeek(t))}
+                    aria-label={`Battuta ${k + 1}: ${b.map((c) => (c === '–' ? 'nessun accordo' : sym(c))).join(', ')}${edit ? '. Tocca per cambiare' : ''}`}
+                    aria-expanded={edit ? picked : undefined}
+                  >
                     {b.map((c, j) => (
                       <span key={j} className={c === '–' ? 'nc' : ''}>
                         {c === '–' ? '–' : sym(c)}
@@ -385,6 +494,20 @@ const SongSheet = memo(function SongSheet({ a, current, bar, sym, follow, firstB
                 );
               })}
             </div>
+            {edit && picking?.section === i && picking.bar < s.chart.length && (
+              <ChordPicker
+                a={a}
+                capo={edit.capo}
+                notation={edit.notation}
+                bar={picking.bar}
+                current={s.chart[picking.bar].map((c) => (c === '–' ? 'nessuno' : sym(c))).join(', ')}
+                onPick={(c) => {
+                  edit.apply(setBarChord(a, i, picking.bar, c));
+                  setPicking(null);
+                }}
+                onCancel={() => setPicking(null)}
+              />
+            )}
             <details className="ss-sound">
               <summary>
                 Suono: {s.tone.gain}, {s.tone.brightness}, ambiente {s.tone.ambience}
