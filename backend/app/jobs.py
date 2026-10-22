@@ -58,17 +58,19 @@ class JobStore:
             job.status = "in corso"
             try:
                 job.result = fn(str(path), progress)
-                job.status = "completato"
+                status = "completato"
             except Exception as exc:  # l'errore va mostrato all'utente
                 log.exception("Analisi fallita")
-                job.status = "errore"
                 job.error = str(exc) or exc.__class__.__name__
+                status = "errore"
             finally:
                 # il brano caricato non viene conservato
                 try:
                     os.unlink(path)
                 except OSError:
                     pass
+            # lo stato finale arriva per ultimo: chi lo legge trova già file cancellato ed errore
+            job.status = status
 
         self._pool.submit(run)
         return job
