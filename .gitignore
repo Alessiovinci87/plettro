@@ -10,3 +10,4 @@ venv/
 *.mp3
 !frontend/public/*.png
 .DS_Store
+!frontend/public/sample.mp3
