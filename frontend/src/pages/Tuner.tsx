@@ -3,6 +3,7 @@ import { useSettings } from '../store';
 import { detectPitch, Smoother } from '../music/pitch';
 import { freqToMidi, midiName, midiToFreq, pcName } from '../music/theory';
 import { audio, referenceTone } from '../audio/engine';
+import { Gauge } from '../components/Gauge';
 
 interface Reading {
   freq: number;
@@ -10,7 +11,6 @@ interface Reading {
   cents: number;
 }
 
-const DOTS = 21; // da -50 a +50 cent, 5 cent per pallino
 
 export function Tuner() {
   const { tuning, tuningMidi, a4, notation, set } = useSettings();
@@ -96,8 +96,6 @@ export function Tuner() {
     }
   }
 
-  const cents = reading ? Math.max(-50, Math.min(50, reading.cents)) : 0;
-  const active = reading ? Math.round((cents + 50) / 5) : -1;
   const status = !reading
     ? listening
       ? 'Suona una corda alla volta'
@@ -122,6 +120,7 @@ export function Tuner() {
       </div>
 
       <div className={`tuner-face ${locked ? 'is-locked' : ''} ${reading ? 'has-signal' : ''}`}>
+        <Gauge cents={reading ? reading.cents : null} locked={locked} />
         <div className="tuner-note" aria-live="polite">
           {reading ? (
             <>
@@ -129,23 +128,8 @@ export function Tuner() {
               <span className="tn-oct">{Math.floor(reading.target / 12) - 1}</span>
             </>
           ) : (
-            <span className="tn-name tn-idle">–</span>
+            <span className="tn-name tn-idle">{mode === 'corde' ? tuningMidi.map((m) => pcName(m, notation)).join(' ') : '–'}</span>
           )}
-        </div>
-        <div className="tuner-dots" aria-hidden="true">
-          {Array.from({ length: DOTS }, (_, i) => (
-            <span
-              key={i}
-              className={`td ${i === 10 ? 'td-center' : ''} ${i === active ? 'td-on' : ''} ${
-                active >= 0 && ((i < 10 && i >= active) || (i > 10 && i <= active)) ? 'td-trail' : ''
-              }`}
-            />
-          ))}
-        </div>
-        <div className="tuner-scale" aria-hidden="true">
-          <span>−50</span>
-          <span>0</span>
-          <span>+50</span>
         </div>
         <p className="tuner-status">{status}</p>
         <p className="tuner-meta">

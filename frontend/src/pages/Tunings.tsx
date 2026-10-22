@@ -19,7 +19,6 @@ export function Tunings({ onDone }: { onDone: () => void }) {
 
   return (
     <section className="page">
-      <h2 className="page-title">Accordature</h2>
 
       <div className="panel">
         <h3 className="h-sub">Quale accordatura per il mio brano?</h3>

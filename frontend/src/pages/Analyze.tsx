@@ -98,7 +98,6 @@ export function Analyze() {
   const busy = !!job;
   return (
     <section className="page analyze">
-      <h2 className="page-title">Suona con il brano</h2>
       <p className="hint">
         Carica una canzone: la analizzo e poi la suoni insieme a me. Ti mostro l'accordo di adesso, il prossimo, la pennata e quando spingere, battuta per battuta.
       </p>
