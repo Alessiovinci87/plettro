@@ -16,8 +16,8 @@ App per chitarristi in italiano. Monorepo:
   - `src/data/chords-standard.json` generato da `scripts/convert_chords_db.py` (chords-db, MIT).
   - `src/data/sample-analysis.json` esempio di risposta del backend (brano sintetico).
 - `backend/` FastAPI. `app/analysis/` solo numpy/scipy; Demucs opzionale (`separation.py`).
-  - `pipeline.py` orchestra tutto e definisce la forma del JSON letto da `frontend/src/pages/Analyze.tsx`.
-    Se cambi il JSON, aggiorna i tipi in `Analyze.tsx`.
+  - `pipeline.py` orchestra tutto e definisce la forma del JSON letto dal frontend.
+    Se cambi il JSON, aggiorna `frontend/src/pages/analysis-types.ts`.
   - Test: `python -m unittest -v` su brani sintetici con risposta nota (`tests/synth.py`).
   - `presets.py`: contratto per PresetDock (`PRESETDOCK_URL`, `POST /api/match`).
 
