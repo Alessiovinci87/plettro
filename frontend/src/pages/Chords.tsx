@@ -2,10 +2,18 @@ import { useMemo, useState } from 'react';
 import { useSettings } from '../store';
 import { ChordDiagram, type DotLabel } from '../components/ChordDiagram';
 import { chordPcs, chordSymbol, chordDegree, identifyChord, KEYS, mod12, pcName, QUALITIES, QUALITY_BY_ID, type Quality } from '../music/theory';
-import { describe, getVoicings, sounding, workFret, type Voicing } from '../music/voicings';
+import { describe, diagramBaseFret, getVoicings, sounding, workFret, type Voicing } from '../music/voicings';
 import { arpeggio, strum } from '../audio/engine';
 
 const GROUPS = ['Triadi', 'Settime', 'Seste e add', 'Sospesi', 'Estese', 'Alterate'] as const;
+
+/** Forma della mano in una parola: il tasto è già scritto sopra il diagramma. */
+function shape(v: Voicing): string {
+  const fs = v.frets.filter((f) => f > 0);
+  if (!fs.length) return 'A vuoto';
+  if (v.frets.some((f) => f === 0) && Math.max(...fs) <= 4) return 'Aperto';
+  return v.barres.length ? 'Barrè' : 'Chiuso';
+}
 
 interface Props {
   onShowOnNeck: (rootPc: number, qualityId: string) => void;
@@ -17,10 +25,10 @@ export function Chords({ onShowOnNeck }: Props) {
     <section className="page">
       <div className="seg" role="tablist" aria-label="Sezione accordi">
         <button role="tab" aria-selected={view === 'libro'} onClick={() => setView('libro')}>
-          Libro accordi
+          Varianti
         </button>
         <button role="tab" aria-selected={view === 'riconosci'} onClick={() => setView('riconosci')}>
-          Che accordo è?
+          Riconosci
         </button>
       </div>
       {view === 'libro' ? <ChordBook onShowOnNeck={onShowOnNeck} /> : <Recognizer />}
@@ -39,6 +47,15 @@ function ChordBook({ onShowOnNeck }: Props) {
   const q = QUALITY_BY_ID[qid];
 
   const voicings = useMemo(() => getVoicings(root, q, tuningMidi, isStandard, bass), [root, q, tuningMidi, isStandard, bass]);
+  // stesso numero di tasti in tutti i diagrammi: card e griglie tutte uguali
+  const rows = Math.max(
+    4,
+    ...voicings.map((v) => {
+      const fs = v.frets.filter((f) => f > 0);
+      return fs.length ? Math.max(...fs) - diagramBaseFret(v) + 1 : 0;
+    }),
+  );
+  const anyGen = voicings.some((v) => v.source === 'generata');
   const symbol = chordSymbol(root, q, notation, bass);
   const tones = chordPcs(root, q).map((pc) => `${pcName(pc, notation)} (${chordDegree(pc, root, q)})`);
 
@@ -94,6 +111,11 @@ function ChordBook({ onShowOnNeck }: Props) {
       <div className="toolbar">
         <span className="tb-count">
           {voicings.length} varianti {isStandard ? '' : `in ${tuning.name}`}
+          {anyGen && (
+            <span className="tb-legend">
+              <i className="gen-dot" aria-hidden="true" /> calcolata
+            </span>
+          )}
         </span>
         <div className="seg seg-small" role="tablist" aria-label="Cosa mostrare nei pallini">
           {(['finger', 'note', 'degree'] as DotLabel[]).map((l) => (
@@ -118,13 +140,12 @@ function ChordBook({ onShowOnNeck }: Props) {
                     strum(sounding(v, tuningMidi), { a4 });
                     setOpen(v);
                   }}
-                  aria-label={`${symbol}, ${describe(v)}`}
+                  aria-label={`${symbol}, ${describe(v)}${v.source === 'generata' ? ', variante calcolata' : ''}`}
                 >
-                  <span className="vc-name">{symbol}</span>
-                  <ChordDiagram voicing={v} tuning={tuningMidi} rootPc={root} quality={q} label={label} notation={notation} width={146} leftHanded={leftHanded} />
                   <span className="vc-fret">Tasto {Math.max(1, wf)}</span>
-                  <span className="vc-desc">{describe(v)}</span>
-                  {v.source === 'generata' && <span className="vc-gen">variante calcolata</span>}
+                  <ChordDiagram voicing={v} tuning={tuningMidi} rootPc={root} quality={q} label={label} notation={notation} width={150} frets={rows} leftHanded={leftHanded} />
+                  <span className="vc-desc">{shape(v)}</span>
+                  {v.source === 'generata' && <i className="gen-dot vc-gen" title="Variante calcolata" aria-hidden="true" />}
                 </button>
               </li>
             );

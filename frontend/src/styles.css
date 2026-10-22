@@ -65,7 +65,7 @@ body {
   background: var(--wood);
   color: var(--bone);
   font-family: var(--body);
-  font-size: 16px;
+  font-size: 1rem; /* su computer la scala sale con html (vedi sotto) */
   line-height: 1.45;
   -webkit-tap-highlight-color: transparent;
 }
@@ -166,8 +166,7 @@ button {
   font-size: 0.9rem;
 }
 .tp-notes {
-  font-family: var(--display);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--bone-dim);
   letter-spacing: 0.08em;
 }
@@ -302,9 +301,22 @@ button {
     font-size: 1.9rem;
   }
   .main {
-    max-width: 1080px;
+    max-width: 1280px;
     margin: 0 auto;
     padding: 8px 16px 40px;
+  }
+  html {
+    font-size: 17px;
+  }
+  /* il selettore di vista non deve attraversare tutto lo schermo */
+  .page > .seg {
+    align-self: flex-start;
+    min-width: 360px;
+  }
+}
+@media (min-width: 1440px) {
+  html {
+    font-size: 18px;
   }
 }
 
@@ -363,8 +375,8 @@ button {
   color: var(--wood);
 }
 .seg-small button {
-  padding: 4px 10px;
-  font-size: 0.85rem;
+  padding: 4px 12px;
+  font-size: 0.9rem;
 }
 
 .chips {
@@ -399,7 +411,7 @@ button {
 }
 .chip-ghost {
   font-family: var(--body);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   border-radius: 999px;
   background: none;
 }
@@ -722,6 +734,12 @@ select {
   color: var(--bone-dim);
   font-size: 0.9rem;
 }
+.tb-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 12px;
+}
 .voicing-grid {
   list-style: none;
   margin: 0;
@@ -730,72 +748,86 @@ select {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 10px;
 }
-.vcard {
-  width: 100%;
+.voicing-grid > li {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+}
+/* card tutte uguali: tasto in alto, diagramma, forma in basso; nessuna riga facoltativa */
+.vcard {
+  position: relative;
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  align-items: end;
+  gap: 6px;
   background: var(--card);
   color: var(--card-ink);
-  border: 0;
+  border: 1px solid transparent;
   border-radius: var(--radius-m);
-  padding: 12px 8px 10px;
+  padding: 10px 10px 12px;
+  transition: border-color 0.15s, transform 0.15s;
 }
-.vc-name {
-  background: var(--card-ink);
-  color: var(--card);
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 1.25rem;
-  padding: 1px 12px;
-  border-radius: 7px;
-  line-height: 1.3;
+.vcard:hover {
+  border-color: var(--pearl);
+}
+.vcard:active {
+  transform: scale(0.98);
+}
+.vcard .diagram {
+  width: 100%;
+  max-width: 200px;
+  height: auto;
+}
+@media (min-width: 960px) {
+  .voicing-grid {
+    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+    gap: 14px;
+  }
 }
 .vc-fret {
-  font-family: var(--display);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 0.95rem;
 }
 .vc-desc {
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   color: #6b5d53;
 }
+.gen-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c27a12;
+}
 .vc-gen {
-  font-size: 0.7rem;
-  color: #8a7b6f;
-  font-style: italic;
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 
+/* spessori e corpi del testo li decide ChordDiagram, in proporzione alla larghezza */
 .diagram {
   display: block;
   overflow: visible;
 }
-.d-fret {
-  stroke: var(--card-line);
-  stroke-width: 1;
-}
+.d-fret,
 .d-string {
   stroke: var(--card-line);
-  stroke-width: 1.1;
 }
 .d-nut {
   fill: var(--card-ink);
 }
 .d-basefret {
   fill: var(--card-ink);
-  font-family: var(--display);
+  font-family: var(--body);
   font-weight: 700;
-  font-size: 14px;
 }
 .d-mute line {
   stroke: var(--card-ink);
-  stroke-width: 1.6;
 }
 .d-open {
   fill: none;
   stroke: var(--card-ink);
-  stroke-width: 1.5;
 }
 .d-dot {
   fill: var(--card-ink);
@@ -1824,7 +1856,7 @@ details ul {
   .tr-controls,
   .tr-timeline {
     width: 100%;
-    max-width: 1048px;
+    max-width: 1248px;
     margin: 0 auto;
   }
 }

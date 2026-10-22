@@ -17,10 +17,31 @@ interface Props {
   frets?: number; // righe minime
 }
 
+/** Barre da disegnare: stesso dito sullo stesso tasto su più corde, senza corde a vuoto in mezzo. */
+export function fingerBars(voicing: Voicing): { fret: number; from: number; to: number; finger: number }[] {
+  const bars: { fret: number; from: number; to: number; finger: number }[] = [];
+  const seen = new Set<string>();
+  voicing.frets.forEach((f, s) => {
+    const finger = voicing.fingers[s];
+    if (f <= 0 || !finger || seen.has(`${f}:${finger}`)) return;
+    seen.add(`${f}:${finger}`);
+    const strings = voicing.frets.map((g, t) => (g === f && voicing.fingers[t] === finger ? t : -1)).filter((t) => t >= 0);
+    if (strings.length < 2) return;
+    const from = Math.min(...strings);
+    const to = Math.max(...strings);
+    // una corda a vuoto in mezzo verrebbe zittita dal dito steso: niente barra
+    if (voicing.frets.slice(from, to + 1).some((g) => g === 0)) return;
+    bars.push({ fret: f, from, to, finger });
+  });
+  return bars;
+}
+
 /**
  * Diagramma verticale stile libro di accordi: corde verticali, capotasto
- * spesso in prima posizione, numero del tasto di partenza a sinistra,
- * dita nei cerchi pieni, x/o sopra le corde.
+ * spesso in prima posizione, numero del tasto di partenza in una colonna
+ * fissa a sinistra, dita nei cerchi pieni, x/o sopra le corde.
+ * Tutte le misure sono proporzionali alla larghezza: a pari `width` e `frets`
+ * due diagrammi hanno la stessa dimensione e la stessa griglia.
  */
 export function ChordDiagram({
   voicing, tuning, rootPc, quality, label = 'finger', notation = 'intl', width = 150, leftHanded, onToggle, frets: minRows = 4,
@@ -29,16 +50,19 @@ export function ChordDiagram({
   const base = onToggle ? 1 : diagramBaseFret(voicing);
   const played = voicing.frets.filter((f) => f > 0);
   const rows = Math.max(minRows, played.length ? Math.max(...played) - base + 1 : 0);
-  const padL = 26;
-  const padR = 10;
-  const padT = 26;
+  const u = width / 150;
+  const colW = 20 * u; // colonna del numero di tasto
+  const padL = colW + 16 * u; // spazio per il barrè che sporge oltre la 6ª corda
+  const padR = 12 * u;
+  const padT = 26 * u;
   const gridW = width - padL - padR;
   const sx = gridW / (n - 1);
-  const sy = sx * 1.25;
-  const height = padT + rows * sy + 14;
+  const sy = sx * 1.3;
+  const height = padT + rows * sy + 8 * u;
   const x = (s: number) => padL + (leftHanded ? n - 1 - s : s) * sx;
   const y = (f: number) => padT + (f - base + 0.5) * sy;
-  const r = Math.min(sx, sy) * 0.44;
+  // raggio sotto metà del passo: tra due pallini vicini resta sempre aria
+  const r = Math.min(sx, sy) * 0.38;
 
   const dotText = (s: number, f: number) => {
     if (label === 'finger') return voicing.fingers[s] ? String(voicing.fingers[s]) : '';
@@ -47,19 +71,12 @@ export function ChordDiagram({
     return rootPc === undefined ? '' : chordDegree(pc, rootPc, quality);
   };
 
-  // Barrè: una barra per ogni tasto in barres, dalla prima all'ultima corda con lo stesso dito.
-  const barreBars = voicing.barres
-    .map((bf) => {
-      const strings = voicing.frets.map((f, s) => (f === bf ? s : -1)).filter((s) => s >= 0);
-      const finger = strings.length ? voicing.fingers[strings[0]] : 0;
-      const same = strings.filter((s) => voicing.fingers[s] === finger);
-      if (same.length < 2) return null;
-      return { fret: bf, from: Math.min(...same), to: Math.max(...same), finger };
-    })
-    .filter((b): b is NonNullable<typeof b> => !!b);
+  const barreBars = fingerBars(voicing);
   const inBarre = (s: number, f: number) => barreBars.some((b) => b.fret === f && s >= b.from && s <= b.to);
 
-  const fs = label === 'finger' ? r * 1.15 : r * (label === 'note' ? 0.95 : 0.9);
+  const fs = label === 'finger' ? r * 1.25 : r * (label === 'note' ? 1.05 : 1);
+  const mark = 4 * u;
+  const lw = Math.max(u, 1); // linee della griglia mai sotto il pixel
 
   return (
     <svg
@@ -72,15 +89,15 @@ export function ChordDiagram({
     >
       {/* tasti */}
       {Array.from({ length: rows + 1 }, (_, i) => (
-        <line key={`f${i}`} x1={padL} x2={padL + gridW} y1={padT + i * sy} y2={padT + i * sy} className="d-fret" />
+        <line key={`f${i}`} x1={padL} x2={padL + gridW} y1={padT + i * sy} y2={padT + i * sy} className="d-fret" strokeWidth={lw} />
       ))}
-      {base === 1 && <rect x={padL - 1} y={padT - 5} width={gridW + 2} height={5} className="d-nut" />}
+      {base === 1 && <rect x={padL - 0.5 * u} y={padT - 5 * u} width={gridW + u} height={5 * u} className="d-nut" />}
       {/* corde */}
       {Array.from({ length: n }, (_, s) => (
-        <line key={`s${s}`} x1={x(s)} x2={x(s)} y1={padT} y2={padT + rows * sy} className="d-string" />
+        <line key={`s${s}`} x1={x(s)} x2={x(s)} y1={padT} y2={padT + rows * sy} className="d-string" strokeWidth={1.1 * lw} />
       ))}
       {base > 1 && (
-        <text x={padL - 8} y={padT + sy * 0.5} className="d-basefret" textAnchor="end" dominantBaseline="central">
+        <text x={colW} y={y(base)} className="d-basefret" fontSize={14 * u} textAnchor="end" dominantBaseline="central">
           {base}ª
         </text>
       )}
@@ -88,12 +105,12 @@ export function ChordDiagram({
       {voicing.frets.map((f, s) =>
         f <= 0 ? (
           f < 0 ? (
-            <g key={`m${s}`} className="d-mute">
-              <line x1={x(s) - 4} x2={x(s) + 4} y1={padT - 16} y2={padT - 8} />
-              <line x1={x(s) - 4} x2={x(s) + 4} y1={padT - 8} y2={padT - 16} />
+            <g key={`m${s}`} className="d-mute" strokeWidth={1.6 * u}>
+              <line x1={x(s) - mark} x2={x(s) + mark} y1={padT - 16 * u} y2={padT - 8 * u} />
+              <line x1={x(s) - mark} x2={x(s) + mark} y1={padT - 8 * u} y2={padT - 16 * u} />
             </g>
           ) : (
-            <circle key={`o${s}`} cx={x(s)} cy={padT - 12} r={4.2} className="d-open" />
+            <circle key={`o${s}`} cx={x(s)} cy={padT - 12 * u} r={4.2 * u} className="d-open" strokeWidth={1.5 * u} />
           )
         ) : null,
       )}
@@ -126,7 +143,6 @@ export function ChordDiagram({
                 {dotText(s, f)}
               </text>
             )}
-            {hideDot && label !== 'finger' && null}
           </g>
         );
       })}
