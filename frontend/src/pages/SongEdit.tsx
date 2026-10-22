@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { chordSymbol, mod12, pcName, QUALITY_BY_ID, type Notation, type Quality } from '../music/theory';
 import { STRUM_PATTERNS } from '../music/rhythm';
+import { loadPatterns } from '../music/patterns';
 import { canMoveSectionStart, choiceSymbol, describeStrum, moveSectionStart, renameSection, setSectionStrum, suggestedChords, type ChordChoice } from '../song/edit';
 import { StrumEditor, type PatternOption } from '../components/StrumEditor';
 import type { Analysis } from './analysis-types';
@@ -74,6 +75,8 @@ export function SectionEditor({ a, index, onApply }: { a: Analysis; index: numbe
   const s = a.sections[index];
   const [name, setName] = useState(s.label);
   const [strum, setStrum] = useState<string | null>(null);
+  // i pattern salvati in Ritmo, letti quando si apre la sezione
+  const [presets] = useState<PatternOption[]>(() => [...SECTION_PATTERNS, ...loadPatterns().map((p) => ({ id: p.id, name: p.name, steps: p.steps, mine: true }))]);
   const id = `se-${index}`;
 
   return (
@@ -110,7 +113,7 @@ export function SectionEditor({ a, index, onApply }: { a: Analysis; index: numbe
         </button>
       ) : (
         <div className="se-strum">
-          <StrumEditor steps={strum} onChange={setStrum} presets={SECTION_PATTERNS} idPrefix={id} />
+          <StrumEditor steps={strum} onChange={setStrum} presets={presets} idPrefix={id} />
           <p className="hint">{describeStrum(strum)}</p>
           <div className="cp-actions">
             <button

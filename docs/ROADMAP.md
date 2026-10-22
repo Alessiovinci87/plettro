@@ -53,12 +53,12 @@ Regole comuni: testi in italiano, stile e token di `styles.css`, niente `confirm
 
 ## Fase 6 – Libro accordi e Ritmo
 
-- [ ] Ricerca per nome ("F#m7b5", "Do maj7", "Bb/D")
-- [ ] Preferiti (stellina sulla variante) ed elenco "I miei accordi"
-- [ ] Accordi della tonalità: tonalità e modo, 7 accordi con diteggiatura
-- [ ] Ritmo: editor di pattern personali (16 sedicesimi) salvati in localStorage
-- [ ] Pattern personali usabili nel player come pattern della sezione
-- [ ] Test (lettura dei nomi, accordi della tonalità, preferiti, pattern)
+- [x] Ricerca per nome ("F#m7b5", "Do maj7", "Bb/D")
+- [x] Preferiti (stellina sulla variante) ed elenco "I miei accordi"
+- [x] Accordi della tonalità: tonalità e modo, 7 accordi con diteggiatura
+- [x] Ritmo: editor di pattern personali (16 sedicesimi) salvati in localStorage
+- [x] Pattern personali usabili nel player come pattern della sezione
+- [x] Test (lettura dei nomi, accordi della tonalità, preferiti, pattern)
 
 ## Fase 7 – Guida alle scale nel Manico
 
@@ -143,3 +143,19 @@ Le scelte prese dove la richiesta lasciava margine sono annotate qui, fase per f
   barre su un solo asse con tacche intere, record e ultima prova etichettati, dettaglio al passaggio
   o al tocco, e una tabella come alternativa al grafico.
 - Due click alla fine dei 60 secondi.
+
+### Fase 6
+
+- Libro accordi con quattro viste: Varianti, Tonalità, I miei, Riconosci. L'accordo scelto resta lo stesso
+  passando da una vista all'altra; da Tonalità e I miei il foglio dell'accordo ha "Altre varianti".
+- La ricerca usa la stessa lettura dei nomi della correzione nel player (Fase 2): notazione internazionale
+  e italiana, alterazioni, basso. Se non riconosce il nome lo dice sotto il campo, con tre esempi.
+- Il preferito è una variante precisa (diteggiatura) in un'accordatura, salvato in `plettro.favorites.v1`.
+  "I miei" mostra quelli dell'accordatura attuale e conta gli altri. Stellina sulla card e pulsante nel foglio.
+- Accordi della tonalità per le scale a 7 note (maggiore, minore, modi, armonica, melodica), in triadi o
+  in settime, con il grado in numeri romani e la prima diteggiatura del libro. I nomi usano la grafia fissa
+  dell'app (Ab, non G#).
+- Pattern personali in `plettro.patterns.v1`, in 4/4 (16 sedicesimi) o 3/4 (12). Mentre li scrivi suona la
+  bozza. Eliminazione con conferma nella pagina. Nel player compaiono in "Parti da" sotto "I miei"
+  (solo quelli con la stessa lunghezza della battuta della sezione).
+- Corretto anche un difetto di Ritmo: dopo "Ferma" una casella della griglia poteva restare accesa.

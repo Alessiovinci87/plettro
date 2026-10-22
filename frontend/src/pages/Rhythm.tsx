@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '../store';
 import { audio, click, strum } from '../audio/engine';
 import { beatsPerBar, stepsPerBeat, STRUM_PATTERNS, type StrumPattern } from '../music/rhythm';
+import { asStrumPattern, emptySteps, loadPatterns, newPatternId, PATTERN_METERS, removePattern, stepsFor, storePatterns, upsertPattern, type CustomPattern, type PatternMeter } from '../music/patterns';
+import { describeStrum } from '../song/edit';
+import { StrumEditor } from '../components/StrumEditor';
 import { chordSymbol, KEYS, pcName, QUALITY_BY_ID } from '../music/theory';
 import { getVoicings, sounding } from '../music/voicings';
 
@@ -24,6 +27,18 @@ export function Rhythm() {
   const [running, setRunning] = useState(false);
   const [pos, setPos] = useState(-1);
   const taps = useRef<number[]>([]);
+  const [mine, setMine] = useState<CustomPattern[]>(loadPatterns);
+  const [draft, setDraft] = useState<CustomPattern | null>(null);
+  const [draftError, setDraftError] = useState('');
+  const [confirmDel, setConfirmDel] = useState(false);
+  // mentre scrivi un pattern lo senti: suona la bozza
+  const active = draft ? asStrumPattern(draft) : pattern;
+  const custom = active ? mine.find((p) => p.id === active.id) : undefined;
+  const editorRef = useRef<HTMLDivElement>(null);
+  const editing = draft !== null;
+  useEffect(() => {
+    if (editing) editorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [editing]);
 
   const chord = useMemo(() => {
     const v = getVoicings(root, QUALITY_BY_ID[qid], tuningMidi, isStandard)[0];
@@ -31,14 +46,15 @@ export function Rhythm() {
   }, [root, qid, tuningMidi, isStandard]);
 
   // Parametri letti dallo scheduler senza riavviarlo.
-  const live = useRef({ bpm, meter, sub, pattern, withClick, chord, a4 });
-  live.current = { bpm, meter, sub, pattern, withClick, chord, a4 };
+  const live = useRef({ bpm, meter, sub, pattern: active, withClick, chord, a4 });
+  live.current = { bpm, meter, sub, pattern: active, withClick, chord, a4 };
 
   useEffect(() => {
     if (!running) return;
     const c = audio();
     let next = c.currentTime + 0.08;
     let step = 0;
+    const pending = new Set<number>();
     const timer = window.setInterval(() => {
       while (next < c.currentTime + 0.12) {
         const L = live.current;
@@ -62,13 +78,19 @@ export function Rhythm() {
           }
         }
         const at = next;
-        window.setTimeout(() => setPos(s), Math.max(0, (at - c.currentTime) * 1000));
+        const t = window.setTimeout(() => {
+          pending.delete(t);
+          setPos(s);
+        }, Math.max(0, (at - c.currentTime) * 1000));
+        pending.add(t);
         next += stepDur;
         step++;
       }
     }, 25);
     return () => {
       window.clearInterval(timer);
+      // niente casella accesa dopo lo stop
+      pending.forEach((t) => window.clearTimeout(t));
       setPos(-1);
     };
   }, [running]);
@@ -83,7 +105,47 @@ export function Rhythm() {
   };
 
   const beats = METERS.find((m) => m.id === meter)!.beats;
-  const grid = pattern ? pattern.steps.split('') : Array.from({ length: beats * sub }, (_, i) => (i % sub === 0 ? '●' : '·'));
+  const grid = active ? active.steps.split('') : Array.from({ length: beats * sub }, (_, i) => (i % sub === 0 ? '●' : '·'));
+
+  const startDraft = (p: CustomPattern) => {
+    setDraft(p);
+    setDraftError('');
+    setConfirmDel(false);
+  };
+  const newDraft = () => {
+    // si parte dal pattern che stai ascoltando, se ha una battuta di 4/4 o 3/4
+    const from = pattern && (pattern.meter === '4/4' || pattern.meter === '3/4') ? pattern : null;
+    startDraft({
+      id: newPatternId(mine),
+      name: `Il mio ritmo ${mine.length + 1}`,
+      meter: from?.meter === '3/4' ? '3/4' : '4/4',
+      steps: from ? from.steps : 'D---D---D---D---',
+    });
+  };
+  const setDraftMeter = (m: PatternMeter) => {
+    if (!draft || draft.meter === m) return;
+    setDraft({ ...draft, meter: m, steps: (draft.steps + emptySteps(m)).slice(0, stepsFor(m)) });
+  };
+  const saveDraft = () => {
+    if (!draft) return;
+    if (!draft.name.trim()) return setDraftError('Dagli un nome.');
+    if (!/[^-]/.test(draft.steps)) return setDraftError('Metti almeno una pennata.');
+    const next = upsertPattern(mine, draft);
+    if (!next) return setDraftError('Pattern non valido.');
+    if (!storePatterns(next)) return setDraftError('Non riesco a salvarlo in questo browser.');
+    const saved = next.find((p) => p.id === draft.id);
+    setMine(next);
+    setPattern(saved ? asStrumPattern(saved) : null);
+    setDraft(null);
+  };
+  const deleteCustom = () => {
+    if (!custom) return;
+    const next = removePattern(mine, custom.id);
+    if (!storePatterns(next)) return setDraftError('Non riesco a salvare in questo browser.');
+    setMine(next);
+    setPattern(null);
+    setConfirmDel(false);
+  };
 
   return (
     <section className="page">
@@ -110,15 +172,15 @@ export function Rhythm() {
         </button>
       </div>
 
-      <div className={`beat-grid ${pattern ? 'is-pattern' : ''}`} style={{ gridTemplateColumns: `repeat(${grid.length}, 1fr)` }} aria-hidden="true">
+      <div className={`beat-grid ${active ? 'is-pattern' : ''}`} style={{ gridTemplateColumns: `repeat(${grid.length}, 1fr)` }} aria-hidden="true">
         {grid.map((g, i) => (
           <span key={i} className={`bg-cell ${i === pos ? 'is-now' : ''} ${g === '-' ? 'is-rest' : ''}`}>
-            {pattern ? (g === 'D' || g === 'd' ? '↓' : g === 'U' || g === 'u' ? '↑' : g === 'x' ? '×' : '') : g}
+            {active ? (g === 'D' || g === 'd' ? '↓' : g === 'U' || g === 'u' ? '↑' : g === 'x' ? '×' : '') : g}
           </span>
         ))}
       </div>
 
-      {!pattern && (
+      {!active && (
         <div className="opts">
           <label className="select-row">
             Tempo in chiave
@@ -143,20 +205,109 @@ export function Rhythm() {
       <h3 className="h-sub">Pattern di pennata</h3>
       <p className="hint">Scegli un ritmo: lo suono con l'accordo che preferisci, tu segui la griglia.</p>
       <div className="chips">
-        <button className="chip" aria-selected={pattern === null} onClick={() => setPattern(null)}>
+        <button className="chip" aria-selected={active === null} disabled={!!draft} onClick={() => setPattern(null)}>
           Solo metronomo
         </button>
         {STRUM_PATTERNS.map((p) => (
-          <button key={p.id} className="chip" aria-selected={pattern?.id === p.id} onClick={() => setPattern(p)}>
+          <button key={p.id} className="chip" aria-selected={active?.id === p.id} disabled={!!draft} onClick={() => setPattern(p)}>
             {p.name}
           </button>
         ))}
       </div>
-      {pattern && (
-        <div className="pattern-info">
-          <p>
-            <strong>{pattern.feel}</strong>, {pattern.meter}. {pattern.tip}
+      <div className="chips mine-chips" role="group" aria-label="I miei pattern">
+        {mine.map((p) => (
+          <button key={p.id} className="chip chip-mine" aria-selected={active?.id === p.id} disabled={!!draft} onClick={() => setPattern(asStrumPattern(p))}>
+            {p.name}
+          </button>
+        ))}
+        {!draft && (
+          <button className="chip chip-ghost" onClick={newDraft}>
+            + Nuovo pattern
+          </button>
+        )}
+      </div>
+
+      {draft && (
+        <div className="pat-ed" role="group" aria-label="Editor del pattern" ref={editorRef}>
+          <h4 className="pat-title">{mine.some((p) => p.id === draft.id) ? 'Modifica il pattern' : 'Nuovo pattern'}</h4>
+          <div className="pat-row">
+            <label htmlFor="pat-name">Nome</label>
+            <input
+              id="pat-name"
+              className="text-in"
+              value={draft.name}
+              maxLength={40}
+              onChange={(e) => {
+                setDraft({ ...draft, name: e.target.value });
+                setDraftError('');
+              }}
+            />
+            <div className="seg seg-small" role="tablist" aria-label="Tempo in chiave">
+              {PATTERN_METERS.map((m) => (
+                <button key={m} role="tab" aria-selected={draft.meter === m} onClick={() => setDraftMeter(m)}>
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+          <StrumEditor
+            steps={draft.steps}
+            onChange={(steps) => {
+              setDraft({ ...draft, steps });
+              setDraftError('');
+            }}
+            presets={STRUM_PATTERNS.map((p) => ({ id: p.id, name: p.name, steps: p.steps }))}
+            idPrefix="pat"
+          />
+          <p className="hint">
+            {describeStrum(draft.steps)} {running ? 'Lo senti mentre lo scrivi.' : 'Premi Avvia per sentirlo mentre lo scrivi.'}
           </p>
+          {draftError && (
+            <p className="error" role="status">
+              {draftError}
+            </p>
+          )}
+          <div className="row-actions">
+            <button className="btn-primary" onClick={saveDraft}>
+              Salva
+            </button>
+            <button className="btn-secondary" onClick={() => setDraft(null)}>
+              Annulla
+            </button>
+          </div>
+        </div>
+      )}
+      {active && (
+        <div className="pattern-info">
+          {!draft && (
+            <p>
+              <strong>{active.feel}</strong>, {active.meter}. {custom ? `${describeStrum(active.steps)} Lo trovi anche nel player, nella pennata di ogni sezione.` : active.tip}
+            </p>
+          )}
+          {custom && !draft && (
+            <div className="row-actions pat-actions">
+              {confirmDel ? (
+                <>
+                  <span className="pat-confirm">Eliminare «{custom.name}»?</span>
+                  <button className="btn-danger small" onClick={deleteCustom}>
+                    Elimina
+                  </button>
+                  <button className="btn-secondary small" onClick={() => setConfirmDel(false)}>
+                    Annulla
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="btn-secondary small" onClick={() => startDraft(custom)}>
+                    Modifica
+                  </button>
+                  <button className="btn-secondary small" onClick={() => setConfirmDel(true)}>
+                    Elimina
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           <div className="opts">
             <label className="select-row">
               Accordo

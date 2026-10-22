@@ -756,7 +756,79 @@ select {
   gap: 10px;
 }
 .voicing-grid > li {
+  position: relative;
   display: flex;
+}
+/* stellina dei preferiti: sulla card (sempre chiara), fuori dal pulsante del diagramma */
+.vstar {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: #8a7868;
+}
+.vstar svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+.vstar[aria-pressed='true'] {
+  color: #b86e0c;
+}
+.vstar[aria-pressed='true'] svg {
+  fill: currentColor;
+}
+.vstar:hover {
+  color: #b86e0c;
+}
+.vstar:focus-visible {
+  outline: 2px solid var(--card-ink);
+}
+.vcard-empty {
+  align-items: center;
+  align-content: center;
+  min-height: 180px;
+  cursor: default;
+}
+.vcard-empty:hover {
+  border-color: transparent;
+}
+.chord-search {
+  display: flex;
+  gap: 8px;
+}
+.chord-search .text-in {
+  padding: 9px 12px;
+}
+@media (min-width: 960px) {
+  .chord-search {
+    max-width: 560px;
+  }
+}
+.chord-search .btn-secondary {
+  flex: none;
+}
+.key-opts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+.my-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 /* card tutte uguali: tasto in alto, diagramma, forma in basso; nessuna riga facoltativa */
 .vcard {
@@ -1087,6 +1159,63 @@ select {
 .legend {
   font-size: 0.82rem;
   color: var(--bone-dim);
+}
+/* pattern personali */
+.chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.chip-mine {
+  border-style: dashed;
+}
+.chip-mine[aria-selected='true'] {
+  border-style: solid;
+}
+.pat-ed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--wood-2);
+  border: 1px solid var(--wood-3);
+  border-radius: var(--radius-m);
+  padding: 14px;
+}
+.pat-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  margin: 0;
+}
+.pat-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+.pat-row .text-in {
+  flex: 1 1 180px;
+  background: var(--wood);
+}
+.pat-ed .row-actions {
+  grid-template-columns: 1fr 1fr;
+}
+.pat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pat-confirm {
+  flex: 1 1 100%;
+  font-weight: 600;
+}
+@media (min-width: 960px) {
+  .pat-ed .row-actions {
+    grid-template-columns: repeat(2, minmax(0, 180px));
+  }
+  .pat-confirm {
+    flex: 0 1 auto;
+  }
 }
 
 /* ---------------- accordature ---------------- */

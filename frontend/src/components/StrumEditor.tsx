@@ -15,6 +15,8 @@ export interface PatternOption {
   id: string;
   name: string;
   steps: string;
+  /** pattern salvato dall'utente in Ritmo */
+  mine?: boolean;
 }
 
 export function StrumEditor({ steps, onChange, presets = [], idPrefix }: { steps: string; onChange: (s: string) => void; presets?: PatternOption[]; idPrefix: string }) {
@@ -55,11 +57,20 @@ export function StrumEditor({ steps, onChange, presets = [], idPrefix }: { steps
             }}
           >
             <option value="">un pattern…</option>
-            {usable.map((p) => (
+            {usable.filter((p) => !p.mine).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
+            {usable.some((p) => p.mine) && (
+              <optgroup label="I miei">
+                {usable.filter((p) => p.mine).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </label>
       )}
