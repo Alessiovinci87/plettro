@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SettingsProvider, useSettings } from './store';
 import { Tuner } from './pages/Tuner';
 import { Chords } from './pages/Chords';
@@ -77,6 +77,18 @@ function Shell() {
   const [neck, setNeck] = useState<NeckFocus>({ mode: 'scala', root: 9, id: 'penta-min' });
   const { tuning, tuningMidi, notation } = useSettings();
   const current = NAV.find((n) => n.id === tab)!;
+  const topbar = useRef<HTMLElement>(null);
+
+  // altezza reale della barra in alto in --topbar-h: serve a chi scorre o resta fisso sotto di lei
+  useEffect(() => {
+    const el = topbar.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      document.documentElement.style.setProperty('--topbar-h', `${el.getBoundingClientRect().height}px`);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const go = (t: Tab) => {
     setTab(t);
@@ -102,7 +114,7 @@ function Shell() {
       </aside>
 
       <div className="main-col">
-        <header className="topbar">
+        <header className="topbar" ref={topbar}>
           <div className="tb-title">
             <span className="tb-logo">
               <Logo />

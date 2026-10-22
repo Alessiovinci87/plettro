@@ -19,6 +19,7 @@
   --radius-m: 14px;
   --display: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
   --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --topbar-h: 62px; /* aggiornata da App con l'altezza reale della barra */
   color-scheme: dark;
 }
 
@@ -307,6 +308,12 @@ button {
   }
   html {
     font-size: 17px;
+  }
+  /* accordatore: colonna stretta, quadrante, pulsante e corde in proporzione */
+  .page.tuner {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
   }
   /* il selettore di vista non deve attraversare tutto lo schermo */
   .page > .seg {
@@ -1272,7 +1279,6 @@ details ul {
 
 /* ---------------- suona con il brano ---------------- */
 .player {
-  --topbar-h: 62px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1838,7 +1844,7 @@ details ul {
   .pl-head { grid-area: head; }
   .stage {
     grid-area: stage;
-    top: 96px;
+    top: calc(var(--topbar-h) + 18px);
     padding: 16px 18px;
     gap: 12px;
   }
@@ -1855,7 +1861,8 @@ details ul {
   .song { grid-area: song; }
   .pl-extra { grid-area: extra; }
   .song-sec {
-    scroll-margin-top: 110px;
+    /* il titolo della sezione resta visibile sotto la barra in alto */
+    scroll-margin-top: calc(var(--topbar-h) + 20px);
   }
   .transport {
     left: 248px;
