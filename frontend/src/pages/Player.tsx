@@ -348,7 +348,12 @@ const SongSheet = memo(function SongSheet({ a, current, bar, sym, follow, firstB
         const prev = a.sections[i - 1];
         const changes = describeChange(prev, s);
         return (
-          <li key={i} ref={(el) => (refs.current[i] = el)} className={`song-sec ${i === current ? 'is-current' : ''}`}>
+          <li
+            key={i}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            className={`song-sec ${i === current ? 'is-current' : ''}`}>
             <header>
               <button className="ss-title" onClick={() => onSeek(s.start)}>
                 <span className="ss-name">{s.label}</span>
