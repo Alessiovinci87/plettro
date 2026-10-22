@@ -40,15 +40,34 @@ class StrumResult:
 
 def guitar_onsets(spec: Spec) -> np.ndarray:
     """Attacchi "tonali" della chitarra: flusso spettrale sui soli picchi armonici
-    (spettro sbiancato) nella banda 300-4000 Hz, così rullante e piatti pesano poco."""
+    (spettro sbiancato) nella banda 1-5 kHz: lì l'attacco del plettro sulle corde è netto,
+    mentre basso e cassa quasi non arrivano e rullante e piatti (rumore) vengono sbiancati."""
     from scipy import ndimage
 
-    band = spec.band(300, 4000)
+    band = spec.band(1000, 5000)
     mag = spec.mag[band]
     floor = ndimage.median_filter(mag, size=(15, 1), mode="nearest")
     peaks = np.maximum(0.0, mag - 1.5 * floor)
     tonal = Spec(np.vstack([np.zeros((1, mag.shape[1])), peaks]), np.r_[0.0, spec.freqs[band]], spec.hop, spec.sr)
     return spectral_flux(tonal, 0, 1e9)
+
+
+def bar_profiles(env: np.ndarray, fps: float, beats: np.ndarray, first_beat: int, meter: int, n_bars: int) -> np.ndarray:
+    """Per ogni battuta, la forza degli attacchi sui suoi sedicesimi (meter*4, n_bars),
+    normalizzata per battuta: descrive il ritmo della chitarra a prescindere dal volume."""
+    out = np.zeros((meter * 4, n_bars), dtype=np.float32)
+    for bar in range(n_bars):
+        for k in range(meter):
+            bi = first_beat + bar * meter + k
+            if bi + 1 >= len(beats):
+                break
+            b0, d = beats[bi], beats[bi + 1] - beats[bi]
+            for q in range(4):
+                out[k * 4 + q, bar] = _sample(env, fps, b0 + q * d / 4, d / 12)
+        m = out[:, bar].max()
+        if m > 0:
+            out[:, bar] /= m
+    return out
 
 
 def _sample(env: np.ndarray, fps: float, t: float, half: float) -> float:

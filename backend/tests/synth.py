@@ -49,30 +49,46 @@ def strum(chord: str, down: bool, dur: float, gain: float, rng) -> np.ndarray:
     return out
 
 
-def song(bpm: float = 100, seed: int = 1, bass_on: bool = True, drums_on: bool = True) -> tuple[np.ndarray, dict]:
-    # la cache cambia quanti numeri casuali consuma pluck: senza svuotarla
-    # la prima chiamata produrrebbe un brano diverso dalle successive
-    _CACHE.clear()
-    rng = np.random.default_rng(seed)
-    beat = 60 / bpm
-    plan = [
+FORMS = {
+    # forma A: quella dei test (intro, strofa, ritornello, strofa, ritornello)
+    "A": [
         ("intro", ["G", "C", "G", "C"], "quarters", 0.35, False),
         ("verse", ["Em", "C", "G", "D"] * 2, "folk", 0.55, False),
         ("chorus", ["G", "D", "Em", "C"] * 2, "eighths", 0.9, True),
         ("verse", ["Em", "C", "G", "D"] * 2, "folk", 0.55, False),
         ("chorus", ["G", "D", "Em", "C"] * 2, "eighths", 0.9, True),
-    ]
-    patterns = {
-        "quarters": "D---D---D---D---",
-        "folk": "D---D-U---U-D-U-",
-        "eighths": "D-U-D-U-D-U-D-U-",
-    }
+    ],
+    # forma B: in La minore, con finale tranquillo (solo per il benchmark)
+    "B": [
+        ("intro", ["Am", "Am", "F", "F"], "quarters", 0.3, False),
+        ("verse", ["Am", "F", "C", "G"] * 2, "folk", 0.5, False),
+        ("chorus", ["F", "G", "Am", "C"] * 2, "eighths", 0.85, True),
+        ("verse", ["Am", "F", "C", "G"] * 2, "folk", 0.5, False),
+        ("chorus", ["F", "G", "Am", "C"] * 2, "eighths", 0.85, True),
+        ("outro", ["Am", "F", "Am", "Am"], "quarters", 0.3, False),
+    ],
+}
+PATTERNS = {
+    "quarters": "D---D---D---D---",
+    "folk": "D---D-U---U-D-U-",
+    "eighths": "D-U-D-U-D-U-D-U-",
+}
+
+
+def song(bpm: float = 100, seed: int = 1, bass_on: bool = True, drums_on: bool = True, form: str = "A") -> tuple[np.ndarray, dict]:
+    # la cache cambia quanti numeri casuali consuma pluck: senza svuotarla
+    # la prima chiamata produrrebbe un brano diverso dalle successive
+    _CACHE.clear()
+    rng = np.random.default_rng(seed)
+    beat = 60 / bpm
+    plan = FORMS[form]
+    patterns = PATTERNS
     total_bars = sum(len(p[1]) for p in plan)
     n = int((total_bars * 4 * beat + 3) * SR)
     gtr = np.zeros(n, dtype=np.float32)
     drums = np.zeros(n, dtype=np.float32)
     bass = np.zeros(n, dtype=np.float32)
-    truth = {"bpm": bpm, "sections": [], "chords": []}
+    truth = {"bpm": bpm, "sections": [], "chords": [], "patterns": [], "gains": []}
     t = 0.5
     for name, chords, pat, gain, dist in plan:
         sec_start = t
@@ -106,6 +122,13 @@ def song(bpm: float = 100, seed: int = 1, bass_on: bool = True, drums_on: bool =
             sec = np.tanh(3.5 * sec) * 0.6
         gtr += sec
         truth["sections"].append((name, round(sec_start, 2), round(t, 2)))
+        truth["patterns"].append(patterns[pat])
+        truth["gains"].append(gain)
+    # un basso elettrico vero ha poca energia sopra 1 kHz: senza filtro il rumore
+    # d'attacco del Karplus-Strong sembrerebbe una pennata di chitarra
+    from scipy.signal import butter, sosfilt
+
+    bass = sosfilt(butter(4, 900, fs=SR, output="sos"), bass).astype(np.float32)
     mix = gtr + (0.6 * drums if drums_on else 0) + (bass if bass_on else 0)
     truth["guitar"] = gtr / np.abs(gtr).max()
     mix /= np.abs(mix).max()

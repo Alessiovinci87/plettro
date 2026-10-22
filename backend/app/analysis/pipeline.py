@@ -8,7 +8,7 @@ import numpy as np
 
 from . import advice, harmony, melody, rhythm, strumming, structure, tone
 from .audio_io import load
-from .dsp import SR, Spec, chroma, hpss_masks, normalize_cols, stft, sync
+from .dsp import SR, Spec, chroma, hpss_masks, normalize_cols, rms_db, stft, sync
 from .presets import get_matcher
 from .separation import separate
 
@@ -68,7 +68,8 @@ def analyze_file(path: str, progress: Progress = _noop) -> dict:
     change = np.r_[0.0, 1 - np.sum(beat_ch[:, 1:] * beat_ch[:, :-1], axis=0)]
     rh = rhythm.refine_meter(rh, low, change)
     key = harmony.estimate_key(ch.mean(axis=1))
-    chords = harmony.recognize_chords(beat_ch, beat_bass, beat_e, bounds, key)
+    beat_in_bar = (np.arange(len(beats)) - rh.downbeat_index) % rh.meter
+    chords = harmony.recognize_chords(beat_ch, beat_bass, beat_e, bounds, key, beat_in_bar, rh.meter)
 
     progress(0.55, "Struttura del brano")
     db = rh.downbeat_index
@@ -79,18 +80,21 @@ def analyze_file(path: str, progress: Progress = _noop) -> dict:
     bar_ch = normalize_cols(sync(ch, times, bar_bounds, agg=np.mean))
     bar_e = sync(frame_e[None, :], times, bar_bounds, agg=np.mean)[0]
     bar_e_db = 20 * np.log10(bar_e / (bar_e.max() + 1e-9) + 1e-6)
-    feat = np.vstack([bar_ch, 0.5 * (bar_e_db / 30)[None, :]])
-    sections = structure.segment(feat, bar_bounds, bar_e_db, bar_ch)
-
-    progress(0.65, "Pennata, dinamica e suono")
+    # attacchi della chitarra: servono per il ritmo di ogni battuta e per la pennata
     g_fine = stft(stems.guitar, n_fft=1024, hop=128)
     g_env = strumming.guitar_onsets(g_fine)
+    n_bars = len(bar_bounds) - 1
+    bar_rhythm = strumming.bar_profiles(g_env, g_fine.fps, beats, db, rh.meter, n_bars)
+    feat = structure.bar_features(bar_ch, bar_rhythm, bar_e_db)
+    sections = structure.segment(feat, bar_bounds, bar_e_db, bar_ch, bar_rhythm)
+
+    progress(0.65, "Pennata, dinamica e suono")
     g_spec = stft(stems.guitar, n_fft=2048, hop=512)
     g_env_coarse = strumming.guitar_onsets(g_spec)
     matcher = get_matcher()
     out_sections = []
     prev_level = None
-    levels = _levels([s.energy for s in sections])
+    levels = _levels(y, [(s.start, s.end) for s in sections])
     for s, level in zip(sections, levels):
         first_beat = db + s.start_bar * rh.meter
         n_beats = (s.end_bar - s.start_bar) * rh.meter
@@ -151,8 +155,22 @@ def analyze_file(path: str, progress: Progress = _noop) -> dict:
     return result
 
 
-def _levels(energies: list[float]) -> list[int]:
-    return [int(np.clip(1 + round(e * 4), 1, 5)) for e in energies]
+DB_PER_LEVEL = 3.0  # ogni 3 dB sotto la sezione più forte si scende di un livello
+
+
+def _levels(y: np.ndarray, spans: list[tuple[float, float]], hop: int = 512) -> list[int]:
+    """Intensità 1-5 di ogni sezione rispetto alla più forte del brano (5 = la più forte).
+
+    Si usa il volume medio in dB: la strofa di solito sta 3-6 dB sotto il ritornello.
+    """
+    e = np.maximum(rms_db(y, 2048, hop), -80.0)
+    fps = SR / hop
+    loud = []
+    for a, b in spans:
+        seg = e[int(a * fps) : max(int(a * fps) + 1, int(b * fps))]
+        loud.append(float(np.mean(seg)) if seg.size else -80.0)
+    top = max(loud) if loud else 0.0
+    return [int(np.clip(5 + round((x - top) / DB_PER_LEVEL), 1, 5)) for x in loud]
 
 
 def _chart(chs: list[harmony.ChordSeg], bar_bounds: np.ndarray) -> list[list[str]]:

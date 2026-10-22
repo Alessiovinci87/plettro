@@ -114,9 +114,17 @@ def recognize_chords(
     beat_energy: np.ndarray,
     beat_times: np.ndarray,
     key: Key,
-    stay: float = 0.9,
+    beat_in_bar: np.ndarray | None = None,
+    meter: int = 4,
+    temperature: float = 25.0,
+    change_cost: tuple[float, float, float] = (3.0, 6.0, 9.0),
 ) -> list[ChordSeg]:
-    """beat_chroma: (12, B) normalizzato; beat_bass: (12, B); beat_times: B+1 confini."""
+    """beat_chroma: (12, B) normalizzato; beat_bass: (12, B); beat_times: B+1 confini.
+
+    beat_in_bar: posizione di ogni battito nella misura (0 = "uno"). Gli accordi cambiano
+    quasi sempre sull'uno, a volte a metà misura, raramente altrove: il costo di un cambio
+    dipende da dove cade (change_cost = uno, metà misura, altri battiti).
+    """
     T, labels = _templates()
     B = beat_chroma.shape[1]
     if B == 0:
@@ -135,17 +143,19 @@ def recognize_chords(
     n_sim = np.where(silent, 1.0, 0.2)[None, :]
     sim = np.vstack([sim, n_sim])
     S = sim.shape[0]
-    log_e = 12.0 * sim  # emissioni "softmax" con temperatura
+    log_e = temperature * sim
     log_e -= log_e.max(axis=0, keepdims=True)
-    log_stay = np.log(stay)
-    log_move = np.log((1 - stay) / (S - 1))
+    if beat_in_bar is None:
+        beat_in_bar = np.arange(B) % meter
+    half = meter // 2 if meter % 2 == 0 else -1
+    cost = np.where(beat_in_bar == 0, change_cost[0], np.where(beat_in_bar == half, change_cost[1], change_cost[2]))
     # Viterbi
     delta = log_e[:, 0].copy()
     psi = np.zeros((S, B), dtype=int)
     for b in range(1, B):
         best_prev = int(np.argmax(delta))
-        move = delta[best_prev] + log_move
-        stay_v = delta + log_stay
+        move = delta[best_prev] - cost[b]
+        stay_v = delta
         choose_stay = stay_v >= move
         psi[:, b] = np.where(choose_stay, np.arange(S), best_prev)
         delta = np.where(choose_stay, stay_v, move) + log_e[:, b]

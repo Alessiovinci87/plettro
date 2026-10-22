@@ -21,6 +21,24 @@ class Section:
     extra: dict = field(default_factory=dict)
 
 
+W_HARMONY, W_RHYTHM, W_ENERGY = 1.0, 0.0, 0.0  # ritmo ed energia nella novità peggiorano i confini (bench.py)
+
+
+def bar_features(bar_chroma: np.ndarray, bar_rhythm: np.ndarray, bar_db: np.ndarray) -> np.ndarray:
+    """Feature per battuta: armonia, ritmo della chitarra ed energia, ciascuna centrata e
+    normalizzata, poi pesata. Intro e strofa hanno spesso gli stessi accordi ma ritmo e
+    volume diversi: senza queste due componenti si fondono."""
+
+    def block(x: np.ndarray, w: float) -> np.ndarray:
+        x = x - x.mean(axis=1, keepdims=True)
+        n = np.linalg.norm(x, axis=0, keepdims=True)
+        return w * x / max(float(np.median(n)), 1e-9)
+
+    e = np.clip(bar_db, np.median(bar_db) - 20, None)[None, :]
+    e = (e - e.mean()) / max(float(e.std()), 1e-9)
+    return np.vstack([block(bar_chroma, W_HARMONY), block(bar_rhythm, W_RHYTHM), W_ENERGY * e])
+
+
 def _novelty(feat: np.ndarray, k: int) -> np.ndarray:
     S = feat.T @ feat  # coseno, feat normalizzate per colonna
     n = S.shape[0]
@@ -35,6 +53,48 @@ def _novelty(feat: np.ndarray, k: int) -> np.ndarray:
 QUIET_DB = 20.0  # sotto la mediana del brano: battuta quasi silenziosa
 
 
+def _find_intro(secs: list[Section], rhythm: np.ndarray, db: np.ndarray, bar_times: np.ndarray) -> list[Section]:
+    """Cerca un'intro nelle prime battute: più piano e/o con un ritmo diverso da quello che segue.
+
+    Intro e strofa hanno spesso gli stessi accordi, quindi la novità armonica non le separa:
+    qui si confrontano le prime k battute (k = 2..8) con le 4 successive.
+    """
+    N = rhythm.shape[1]
+    best_k, best = 0, 0.0
+    for k in range(2, min(9, N - 4)):
+        quieter = float(np.mean(db[k : k + 4]) - np.mean(db[:k]))
+        a = rhythm[:, :k].mean(axis=1)
+        b = rhythm[:, k : k + 4].mean(axis=1)
+        cos = float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-9))
+        # le battute dentro l'intro devono somigliarsi tra loro
+        inner = rhythm[:, :k]
+        coh = float(np.mean([inner[:, i] @ a / (np.linalg.norm(inner[:, i]) * np.linalg.norm(a) + 1e-9) for i in range(k)]))
+        score = max(0.0, quieter - 1.5) / 3 + max(0.0, 0.9 - cos) * 3
+        score *= coh
+        # a parità, preferisci intro di 2, 4 o 8 battute
+        if k in (2, 4, 8):
+            score *= 1.15
+        if score > best:
+            best_k, best = k, score
+    if best < 0.35 or best_k == 0:
+        return secs
+    k = best_k
+    intro = Section(0, k, float(bar_times[0]), float(bar_times[k]))
+    intro.extra["intro"] = True
+    rest: list[Section] = []
+    for s in secs:
+        if s.end_bar <= k:
+            continue
+        if s.start_bar < k:
+            s = Section(k, s.end_bar, float(bar_times[k]), s.end, s.group, s.label, s.energy, dict(s.extra))
+        rest.append(s)
+    # un pezzo rimasto troppo corto dopo l'intro si unisce al successivo
+    if len(rest) > 1 and rest[0].end_bar - rest[0].start_bar < 2:
+        rest[1] = Section(rest[0].start_bar, rest[1].end_bar, rest[0].start, rest[1].end, rest[1].group, rest[1].label, rest[1].energy, dict(rest[1].extra))
+        rest = rest[1:]
+    return [intro, *rest]
+
+
 def _quiet_tail(bar_energy: np.ndarray) -> int:
     """Numero di battute finali quasi silenziose (coda del riverbero, silenzio)."""
     floor = float(np.median(bar_energy)) - QUIET_DB
@@ -44,7 +104,7 @@ def _quiet_tail(bar_energy: np.ndarray) -> int:
     return n
 
 
-def segment(bar_feat: np.ndarray, bar_times: np.ndarray, bar_energy: np.ndarray, bar_chroma: np.ndarray | None = None) -> list[Section]:
+def segment(bar_feat: np.ndarray, bar_times: np.ndarray, bar_energy: np.ndarray, bar_chroma: np.ndarray | None = None, bar_rhythm: np.ndarray | None = None) -> list[Section]:
     """bar_feat: (D, N) feature per misura; bar_times: N+1 confini in secondi; bar_energy in dB."""
     N_all = bar_feat.shape[1]
     if N_all == 0:
@@ -73,7 +133,11 @@ def segment(bar_feat: np.ndarray, bar_times: np.ndarray, bar_energy: np.ndarray,
     for s in secs:
         s.energy = float((e[s.start_bar : s.end_bar].mean() - e.min()) / rng)
 
-    # raggruppamento: sezioni con feature medie simili ricevono la stessa lettera
+    if bar_rhythm is not None:
+        secs = _find_intro(secs, bar_rhythm[:, :N], bar_energy[:N], bar_times)
+        for s in secs:
+            s.energy = float((e[s.start_bar : s.end_bar].mean() - e.min()) / rng)
+
     # raggruppamento: armonia media simile ed energia simile → stessa lettera
     src = bar_chroma if bar_chroma is not None else bar_feat
     means = [normalize_cols(src[:, s.start_bar : s.end_bar].mean(axis=1, keepdims=True))[:, 0] for s in secs]
@@ -90,6 +154,8 @@ def segment(bar_feat: np.ndarray, bar_times: np.ndarray, bar_energy: np.ndarray,
             rep_energy.append(s.energy)
     for s, g in zip(secs, groups):
         s.group = chr(ord("A") + min(g, 25))
+    if secs and secs[0].extra.get("intro"):
+        secs[0].group = "Z"
     # sezioni consecutive dello stesso gruppo sono una sola: energia pesata sulle battute
     merged: list[Section] = []
     for s in secs:
@@ -123,7 +189,9 @@ def _name(secs: list[Section]) -> None:
         others = [g for g in repeated if g != chorus]
         verse = max(others, key=lambda g: count[g], default=None)
     for i, s in enumerate(secs):
-        if i == 0 and (s.end_bar - s.start_bar) <= 8 and len(secs) > 2 and s.energy < secs[1].energy and count[s.group] <= 2 and s.group not in (chorus,):
+        if i == 0 and s.extra.get("intro"):
+            s.label = "Intro"
+        elif i == 0 and (s.end_bar - s.start_bar) <= 8 and len(secs) > 2 and s.energy < secs[1].energy and count[s.group] <= 2 and s.group not in (chorus,):
             s.label = "Intro"
         elif s.group == chorus:
             s.label = "Ritornello"
