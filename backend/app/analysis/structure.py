@@ -32,14 +32,29 @@ def _novelty(feat: np.ndarray, k: int) -> np.ndarray:
     return nov / (nov.max() + 1e-9)
 
 
+QUIET_DB = 20.0  # sotto la mediana del brano: battuta quasi silenziosa
+
+
+def _quiet_tail(bar_energy: np.ndarray) -> int:
+    """Numero di battute finali quasi silenziose (coda del riverbero, silenzio)."""
+    floor = float(np.median(bar_energy)) - QUIET_DB
+    n = 0
+    while n < len(bar_energy) and bar_energy[-1 - n] < floor:
+        n += 1
+    return n
+
+
 def segment(bar_feat: np.ndarray, bar_times: np.ndarray, bar_energy: np.ndarray, bar_chroma: np.ndarray | None = None) -> list[Section]:
-    """bar_feat: (D, N) feature per misura; bar_times: N+1 confini in secondi."""
-    N = bar_feat.shape[1]
-    if N == 0:
+    """bar_feat: (D, N) feature per misura; bar_times: N+1 confini in secondi; bar_energy in dB."""
+    N_all = bar_feat.shape[1]
+    if N_all == 0:
         return []
-    if N < 8:
-        return [Section(0, N, float(bar_times[0]), float(bar_times[-1]), "A", "Brano", 1.0)]
-    f = normalize_cols(bar_feat - bar_feat.mean(axis=1, keepdims=True))
+    if N_all < 8:
+        return [Section(0, N_all, float(bar_times[0]), float(bar_times[-1]), "A", "Brano", 1.0)]
+    # la coda silenziosa falserebbe la novità sulle ultime battute: resta fuori dalla segmentazione
+    tail = _quiet_tail(bar_energy)
+    N = N_all - tail if N_all - tail >= 8 else N_all
+    f = normalize_cols(bar_feat[:, :N] - bar_feat[:, :N].mean(axis=1, keepdims=True))
     nov = _novelty(f, k=4)
     # confini: picchi di novità, preferibilmente ogni 4 misure
     cand = [i for i in range(2, N - 1) if nov[i] >= nov[i - 1] and nov[i] >= nov[i + 1] and nov[i] > 0.3]
@@ -76,6 +91,12 @@ def segment(bar_feat: np.ndarray, bar_times: np.ndarray, bar_energy: np.ndarray,
     for s, g in zip(secs, groups):
         s.group = chr(ord("A") + min(g, 25))
     _name(secs)
+    if N < N_all and secs[-1].label == "Finale":
+        secs[-1].end_bar, secs[-1].end = N_all, float(bar_times[N_all])
+    elif N < N_all:
+        energy = float((e[N:].mean() - e.min()) / rng)
+        group = chr(ord("A") + min(max(groups) + 1, 25))
+        secs.append(Section(N, N_all, float(bar_times[N]), float(bar_times[N_all]), group, "Finale", energy))
     return secs
 
 
