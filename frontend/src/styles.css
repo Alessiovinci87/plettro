@@ -1528,6 +1528,34 @@ details ul {
   border: 2px solid var(--amber);
 }
 
+/* ---------------- player: accordi semplici ---------------- */
+.pl-facts li.pl-simple {
+  gap: 12px;
+  padding: 2px 12px 2px 8px;
+}
+.pl-facts li.pl-simple .check {
+  color: var(--bone);
+  gap: 6px;
+}
+.pl-facts li.pl-simple.on {
+  border-color: var(--pearl);
+}
+.pl-swaps {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--bone-dim);
+}
+.pl-swaps s {
+  color: var(--bone-dim);
+}
+.pl-swaps strong {
+  color: var(--bone);
+}
+.pl-swaps em {
+  color: var(--amber);
+  font-style: normal;
+}
+
 /* ---------------- player: studio ---------------- */
 .ss-bar {
   -webkit-touch-callout: none;
@@ -1881,6 +1909,19 @@ details ul {
   font-weight: 700;
   font-size: 2.2rem;
   line-height: 1;
+  white-space: nowrap;
+}
+.st-name.is-mid {
+  font-size: 2.9rem;
+}
+.st-name.is-long {
+  font-size: 2.3rem;
+}
+.st-next-name.is-mid {
+  font-size: 1.8rem;
+}
+.st-next-name.is-long {
+  font-size: 1.45rem;
 }
 .st-rhythm {
   display: flex;
@@ -2316,6 +2357,12 @@ details ul {
 @media (min-width: 600px) {
   .st-name {
     font-size: 4.4rem;
+  }
+  .st-name.is-mid {
+    font-size: 3.5rem;
+  }
+  .st-name.is-long {
+    font-size: 2.8rem;
   }
   .ss-bars {
     grid-template-columns: repeat(8, minmax(0, 1fr));

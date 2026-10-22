@@ -11,6 +11,7 @@ import { fmtTime, positionAt, sectionFirstBars, type Position } from './songTime
 import { library } from '../song/library';
 import { setBarChord } from '../song/edit';
 import { ChordPicker, SectionEditor } from './SongEdit';
+import { easyVoicing, simplifyAnalysis } from '../music/simplify';
 import {
   beatPeriodAt, clicksBetween, countIn, inRange, loopTimes, nextRate, parsePrefs, PREFS_KEY, RATES, sameRange, sectionRange, tapBar, TRAINER_STARTS,
   type LoopRange, type PracticePrefs, type Selection,
@@ -26,12 +27,13 @@ function playSymbol(sym: string, capo: number, notation: Notation): string {
 }
 
 const shapeCache = new Map<string, Voicing | null>();
-function shapeFor(sym: string, capo: number): { v: Voicing; root: number; q: Quality } | null {
+/** Diteggiatura da mostrare; con `easy` preferisce la forma aperta facile degli accordi semplici. */
+function shapeFor(sym: string, capo: number, easy = false): { v: Voicing; root: number; q: Quality } | null {
   const p = parseChord(sym);
   if (!p) return null;
   const root = mod12(p.root - capo);
-  const key = `${root}|${p.quality.id}`;
-  if (!shapeCache.has(key)) shapeCache.set(key, getVoicings(root, p.quality, STD, true)[0] ?? null);
+  const key = `${root}|${p.quality.id}|${easy}`;
+  if (!shapeCache.has(key)) shapeCache.set(key, (easy ? easyVoicing(root, p.quality) : null) ?? getVoicings(root, p.quality, STD, true)[0] ?? null);
   const v = shapeCache.get(key);
   return v ? { v, root, q: p.quality } : null;
 }
@@ -223,7 +225,10 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
   const clockRef = useRef(clock);
   clockRef.current = clock;
   const firstBars = useMemo(() => sectionFirstBars(a), [a]);
-  const pos = positionAt(a, clock.time, firstBars);
+  // accordi semplici: si mostra un'analisi con i nomi sostituiti (in modifica si lavora sull'originale)
+  const simple = useMemo(() => (prefs.simple ? simplifyAnalysis(a, { capo, sus: prefs.simpleSus }) : null), [a, capo, prefs.simple, prefs.simpleSus]);
+  const view = simple && !editing ? simple.analysis : a;
+  const pos = positionAt(view, clock.time, firstBars);
 
   // conteggio 1-2-3-4: click pianificati sull'orologio audio, poi parte il brano
   const [counting, setCounting] = useState<number | null>(null);
@@ -373,7 +378,30 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
             </button>
           </li>
           <li>{a.tuning.name}</li>
+          <li className={`pl-simple ${prefs.simple ? 'on' : ''}`}>
+            <label className="check small" htmlFor="pl-simple">
+              <input id="pl-simple" type="checkbox" checked={prefs.simple} onChange={(e) => setPrefs({ simple: e.target.checked })} /> Accordi semplici
+            </label>
+            {prefs.simple && (
+              <label className="check small" htmlFor="pl-simple-sus">
+                <input id="pl-simple-sus" type="checkbox" checked={prefs.simpleSus} onChange={(e) => setPrefs({ simpleSus: e.target.checked })} /> anche i sus
+              </label>
+            )}
+          </li>
         </ul>
+        {simple && (
+          <p className="pl-swaps" role="status">
+            {simple.swaps.length === 0
+              ? 'Gli accordi di questo brano sono già semplici.'
+              : simple.swaps.map((s, k) => (
+                  <span key={s.from} title={s.why}>
+                    {k > 0 && ' · '}
+                    <s>{playSymbol(s.from, capo, notation)}</s> → <strong>{playSymbol(s.to, capo, notation)}</strong>
+                  </span>
+                ))}
+            {editing && simple.swaps.length > 0 && <em> In modifica vedi gli accordi originali.</em>}
+          </p>
+        )}
         {notice && (
           <p className={`pl-notice ${notice.startsWith('Non salvato') ? 'is-error' : ''}`} role="status">
             {notice}
@@ -472,8 +500,8 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
         </details>
       </header>
 
-      <Stage a={a} pos={pos} section={section} capo={capo} sym={sym} notation={notation} started={clock.time > 0.01} onHear={(s) => {
-        const sh = shapeFor(s, capo);
+      <Stage a={view} pos={pos} section={section} capo={capo} easy={!!simple} sym={sym} notation={notation} started={clock.time > 0.01} onHear={(s) => {
+        const sh = shapeFor(s, capo, !!simple);
         if (sh) strum(sounding(sh.v, STD).map((m) => (m === null ? null : m + capo)), { a4 });
       }} />
 
@@ -496,7 +524,7 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
         </p>
       )}
       <SongSheet
-        a={a}
+        a={view}
         current={pos.sectionIndex}
         bar={pos.barInSection}
         sym={sym}
@@ -533,7 +561,7 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
       )}
 
       <Transport
-        a={a}
+        a={view}
         clock={clock}
         pos={pos}
         loop={loop}
@@ -550,16 +578,19 @@ export function Player({ a: initial, original = initial, edited: editedAtOpen = 
 
 // ---------------------------------------------------------------------------
 
-function Stage({ a, pos, section, capo, sym, notation, started, onHear }: {
-  a: Analysis; pos: Position; section: Section; capo: number; sym: (s: string) => string; notation: Notation; started: boolean; onHear: (s: string) => void;
+/** I nomi lunghi (Fmaj7, Do#m7b5) si rimpiccioliscono invece di andare a capo. */
+const nameSize = (name: string) => (name.length >= 6 ? 'is-long' : name.length >= 4 ? 'is-mid' : '');
+
+function Stage({ a, pos, section, capo, easy, sym, notation, started, onHear }: {
+  a: Analysis; pos: Position; section: Section; capo: number; easy: boolean; sym: (s: string) => string; notation: Notation; started: boolean; onHear: (s: string) => void;
 }) {
   const cur = pos.chordIndex >= 0 ? a.chords[pos.chordIndex] : null;
   const next = pos.nextChordIndex >= 0 ? a.chords[pos.nextChordIndex] : null;
   const shown = cur ?? next;
-  const shape = shown ? shapeFor(shown.symbol, capo) : null;
+  const shape = shown ? shapeFor(shown.symbol, capo, easy) : null;
   // prima di partire il riquadro mostra l'accordo che viene dopo il primo
   const after = !cur && next ? a.chords.slice(pos.nextChordIndex + 1).find((c) => c.symbol !== next.symbol) ?? null : next;
-  const nextShape = after ? shapeFor(after.symbol, capo) : null;
+  const nextShape = after ? shapeFor(after.symbol, capo, easy) : null;
   const steps = section.strum.steps;
   const soon = !!cur && !!next && pos.beatsToNext > 0 && pos.beatsToNext <= 2;
   const lvl = section.dynamics.level;
@@ -581,7 +612,7 @@ function Stage({ a, pos, section, capo, sym, notation, started, onHear }: {
       <div className="st-chords">
         <button className="st-now" onClick={() => shown && onHear(shown.symbol)} aria-label={shown ? `Ascolta ${sym(shown.symbol)}` : 'Nessun accordo'}>
           <span className="st-label">{cur ? 'Adesso' : started ? 'Pausa' : 'Si parte con'}</span>
-          <span className="st-name">{shown ? sym(shown.symbol) : '–'}</span>
+          <span className={`st-name ${nameSize(shown ? sym(shown.symbol) : '')}`}>{shown ? sym(shown.symbol) : '–'}</span>
           {shape && <span className="st-fret">{workFret(shape.v) <= 1 ? 'tasti 1–4' : `${workFret(shape.v)}º tasto`}</span>}
         </button>
         <div className="st-diagram">
@@ -591,7 +622,7 @@ function Stage({ a, pos, section, capo, sym, notation, started, onHear }: {
           <span className="st-label">
             {!after ? 'Fine' : cur && pos.beatsToNext > 0 ? `Tra ${pos.beatsToNext} ${pos.beatsToNext === 1 ? 'battito' : 'battiti'}` : 'Poi'}
           </span>
-          <span className="st-next-name">{after ? sym(after.symbol) : ''}</span>
+          <span className={`st-next-name ${nameSize(after ? sym(after.symbol) : '')}`}>{after ? sym(after.symbol) : ''}</span>
           {nextShape && <span className="st-fret">{workFret(nextShape.v) <= 1 ? 'tasti 1–4' : `${workFret(nextShape.v)}º tasto`}</span>}
         </div>
       </div>

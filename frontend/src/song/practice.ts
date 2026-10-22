@@ -80,9 +80,12 @@ export interface PracticePrefs {
   volume: number;
   trainer: boolean;
   trainerStart: number;
+  /** Accordi semplici (Fase 4) e, a parte, anche i sospesi. */
+  simple: boolean;
+  simpleSus: boolean;
 }
 
-export const DEFAULT_PREFS: PracticePrefs = { countIn: false, metronome: false, volume: 0.6, trainer: false, trainerStart: 0.7 };
+export const DEFAULT_PREFS: PracticePrefs = { countIn: false, metronome: false, volume: 0.6, trainer: false, trainerStart: 0.7, simple: false, simpleSus: false };
 export const PREFS_KEY = 'plettro.practice.v1';
 
 export function parsePrefs(raw: string | null): PracticePrefs {
@@ -96,6 +99,8 @@ export function parsePrefs(raw: string | null): PracticePrefs {
       volume: num(p.volume, DEFAULT_PREFS.volume, 0, 1),
       trainer: bool(p.trainer, DEFAULT_PREFS.trainer),
       trainerStart: num(p.trainerStart, DEFAULT_PREFS.trainerStart, 0.5, 0.95),
+      simple: bool(p.simple, DEFAULT_PREFS.simple),
+      simpleSus: bool(p.simpleSus, DEFAULT_PREFS.simpleSus),
     };
   } catch {
     return { ...DEFAULT_PREFS };

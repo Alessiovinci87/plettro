@@ -37,11 +37,11 @@ Regole comuni: testi in italiano, stile e token di `styles.css`, niente `confirm
 
 ## Fase 4 – Accordi semplificati
 
-- [ ] Interruttore "Accordi semplici" nel player
-- [ ] Estensioni → triade; barrè → forma aperta adatta se esiste (es. F → Fmaj7);
+- [x] Interruttore "Accordi semplici" nel player
+- [x] Estensioni → triade; barrè → forma aperta adatta se esiste (es. F → Fmaj7);
       sus → triade solo se scelto
-- [ ] Rispetta il capotasto
-- [ ] Logica pura in `src/music/simplify.ts` con test
+- [x] Rispetta il capotasto
+- [x] Logica pura in `src/music/simplify.ts` con test
 
 ## Fase 5 – Allenatore dei cambi
 
@@ -117,3 +117,17 @@ Le scelte prese dove la richiesta lasciava margine sono annotate qui, fase per f
   chiude il loop non viene pianificato prima del salto (niente click doppio). Senza audio resta sempre acceso.
 - Tocco lungo: ogni nuova pressione azzera la precedente, perché il rilascio può cadere fuori dalla
   battuta quando compare il suggerimento.
+
+### Fase 4
+
+- "Facile" vuol dire una forma aperta di un elenco curato (nessun barrè, entro il 3º tasto): la libreria
+  chords-db segna come "senza barrè" anche forme scomode (Cm x31013, Gm 310033), quindi non basta.
+- Regole: maggiori e minori con estensioni → triade; se la triade non ha forma facile si prova la
+  settima aperta (F → Fmaj7, Bm → Bm7), altrimenti resta com'è (Bb, F#m). Il 7 di dominante resta
+  se è facile (A7, E7, B7), le estensioni scendono al 7 (G9 → G7), altrimenti triade (F7 → F).
+  Sus → triade solo con "anche i sus". Il basso degli accordi con barra si toglie. Dim, aug, power chord restano.
+- Si guarda la forma suonata (tonica meno capotasto): con il capotasto al 1º, F si suona come E e resta F.
+- Nel player si mostra un'analisi semplificata intera: accordi vicini diventati uguali si uniscono, così
+  "Adesso" e "Poi" non mostrano lo stesso nome. Sotto i dati del brano c'è l'elenco delle sostituzioni.
+  La diteggiatura mostrata è la forma facile. In "Modifica" si vedono gli accordi originali.
+- I nomi lunghi nella scheda si rimpiccioliscono invece di andare a capo ("Fma / j7").
