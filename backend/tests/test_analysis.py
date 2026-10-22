@@ -155,7 +155,7 @@ try:
     from fastapi.testclient import TestClient
 
     HAVE_FASTAPI = True
-except ImportError:
+except (ImportError, RuntimeError):  # starlette lancia RuntimeError se manca httpx2
     HAVE_FASTAPI = False
 
 

@@ -1,0 +1,3 @@
+# Test: python -m unittest -v (TestClient di FastAPI richiede httpx2)
+-r requirements.txt
+httpx2
